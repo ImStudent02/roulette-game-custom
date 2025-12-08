@@ -1,11 +1,14 @@
 'use client';
 
-import { useRef, useEffect, useState, memo } from 'react';
+import { useRef, useEffect, useState, memo, useMemo } from 'react';
 import { WheelPosition } from '@/lib/types';
 import { generateAdditionalWheel } from '@/lib/gameUtils';
 import * as HyperParams from '@/lib/hyperParams';
 
 const ANGLE_PER_SLOT = 360 / 51;
+
+// Color types for the outer ring
+type OuterColor = 'green' | 'pink' | 'gold' | 'red' | 'none';
 
 type RouletteWheelProps = {
   onSpinComplete: (position: WheelPosition, secondPosition?: WheelPosition) => void;
@@ -50,6 +53,43 @@ const createFixedWheelLayout = (): WheelPosition[] => {
 const WHEEL_NUMBERS = createFixedWheelLayout();
 export { WHEEL_NUMBERS };
 
+// Generate outer color ring: 10 green/pink alternating, 1 gold (random), 4 red (2 before, 2 after gold)
+// Rest are 'none' (no special color)
+const generateOuterColors = (): OuterColor[] => {
+  const colors: OuterColor[] = new Array(51).fill('none');
+  
+  // Place 10 green/pink alternating in first section (roughly positions 0-9)
+  // These are spread across the wheel
+  const greenPinkPositions = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45];
+  greenPinkPositions.forEach((pos, index) => {
+    colors[pos % 51] = index % 2 === 0 ? 'green' : 'pink';
+  });
+  
+  // Pick a random position for gold (not overlapping with existing)
+  let goldPosition: number;
+  do {
+    goldPosition = Math.floor(Math.random() * 51);
+  } while (colors[goldPosition] !== 'none');
+  
+  colors[goldPosition] = 'gold';
+  
+  // Place 2 red before and 2 red after gold
+  const redPositions = [
+    (goldPosition - 2 + 51) % 51,
+    (goldPosition - 1 + 51) % 51,
+    (goldPosition + 1) % 51,
+    (goldPosition + 2) % 51
+  ];
+  
+  redPositions.forEach(pos => {
+    if (colors[pos] === 'none') {
+      colors[pos] = 'red';
+    }
+  });
+  
+  return colors;
+};
+
 const RouletteWheel = ({
   onSpinComplete,
   isSpinning,
@@ -67,6 +107,9 @@ const RouletteWheel = ({
   const [activeSpin, setActiveSpin] = useState<boolean>(false);
   const [isResultPhase, setIsResultPhase] = useState<boolean>(false);
   
+  // Generate outer colors once per game session, regenerate on each spin
+  const [outerColors, setOuterColors] = useState<OuterColor[]>(() => generateOuterColors());
+  
   const slowSpinIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const activeSpinTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const completedSpinRef = useRef<boolean>(false);
@@ -74,7 +117,10 @@ const RouletteWheel = ({
   const winPositionRef = useRef<WheelPosition | null>(null);
   const secondWinPositionRef = useRef<WheelPosition | null>(null);
 
-  const wheelSize = 400;
+  const wheelSize = 420;
+  
+  // Get the gold position index
+  const goldIndex = useMemo(() => outerColors.findIndex(c => c === 'gold'), [outerColors]);
   
   useEffect(() => {
     const wheelElement = wheelRef.current;
@@ -144,6 +190,9 @@ const RouletteWheel = ({
         activeSpinTimeoutRef.current = null;
       }
       
+      // Regenerate outer colors for each new spin (gold position changes)
+      setOuterColors(generateOuterColors());
+      
       setActiveSpin(true);
       setIsResultPhase(false);
       
@@ -158,12 +207,8 @@ const RouletteWheel = ({
       winPositionRef.current = winPosition;
       secondWinPositionRef.current = null;
       
-      // Calculate the angle to rotate so winning segment ends up at the TOP (under the arrow)
-      // Each segment spans ANGLE_PER_SLOT degrees, and we want the CENTER of the winning segment at top
-      // Segment N's center is at angle: (N + 0.5) * ANGLE_PER_SLOT from the starting position
-      // To bring it to top, we rotate by the NEGATIVE of that (or 360 - that angle for clockwise spin)
       const segmentCenterAngle = (randomIndex + 0.5) * ANGLE_PER_SLOT;
-      const targetAngle = 360 - segmentCenterAngle; // Rotate so segment comes to top
+      const targetAngle = 360 - segmentCenterAngle;
       
       const rotations = HyperParams.ANIMATION.minRotations + 
         Math.floor(Math.random() * (HyperParams.ANIMATION.maxRotations - HyperParams.ANIMATION.minRotations));
@@ -233,11 +278,24 @@ const RouletteWheel = ({
     return `M ${x1} ${y1} A ${outerRadius} ${outerRadius} 0 0 1 ${x2} ${y2} L ${x3} ${y3} A ${innerRadius} ${innerRadius} 0 0 0 ${x4} ${y4} Z`;
   };
   
+  // Get color value for outer ring
+  const getOuterColorFill = (color: OuterColor): string => {
+    switch (color) {
+      case 'green': return '#22c55e';
+      case 'pink': return '#ec4899';
+      case 'gold': return '#fbbf24';
+      case 'red': return '#ef4444';
+      default: return 'transparent';
+    }
+  };
+  
   const centerX = wheelSize / 2;
   const centerY = wheelSize / 2;
-  const outerRadius = wheelSize / 2 - 10;
-  const innerRadius = wheelSize / 2 - 70;
-  const textRadius = (outerRadius + innerRadius) / 2;
+  const outerRingOuter = wheelSize / 2 - 8;
+  const outerRingInner = wheelSize / 2 - 28;
+  const mainSegmentOuter = outerRingInner - 2;
+  const mainSegmentInner = wheelSize / 2 - 100;
+  const textRadius = (mainSegmentOuter + mainSegmentInner) / 2;
   
   return (
     <div className={`relative mx-auto ${className}`} style={{ maxWidth: wheelSize + 40 }}>
@@ -314,9 +372,55 @@ const RouletteWheel = ({
                 <stop offset="50%" stopColor="#d4af37" />
                 <stop offset="100%" stopColor="#b8860b" />
               </linearGradient>
+              <filter id="goldGlow">
+                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                <feMerge>
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
             </defs>
             
-            {/* Draw segments */}
+            {/* OUTER COLOR RING - Green/Pink/Gold/Red indicators */}
+            {WHEEL_NUMBERS.map((_, index) => {
+              const outerColor = outerColors[index];
+              if (outerColor === 'none') return null;
+              
+              const isGold = outerColor === 'gold';
+              
+              return (
+                <path
+                  key={`outer-${index}`}
+                  d={createSegmentPath(index, outerRingInner, outerRingOuter, centerX, centerY)}
+                  fill={getOuterColorFill(outerColor)}
+                  stroke="#c9a227"
+                  strokeWidth="1"
+                  style={{
+                    filter: isGold ? 'url(#goldGlow) brightness(1.2)' : undefined,
+                  }}
+                  className={isGold ? 'animate-pulse' : ''}
+                />
+              );
+            })}
+            
+            {/* Empty outer ring segments (for ones without special color) */}
+            {WHEEL_NUMBERS.map((_, index) => {
+              const outerColor = outerColors[index];
+              if (outerColor !== 'none') return null;
+              
+              return (
+                <path
+                  key={`outer-empty-${index}`}
+                  d={createSegmentPath(index, outerRingInner, outerRingOuter, centerX, centerY)}
+                  fill="rgba(30, 30, 30, 0.6)"
+                  stroke="#c9a227"
+                  strokeWidth="0.5"
+                  opacity="0.5"
+                />
+              );
+            })}
+            
+            {/* MAIN BLACK/WHITE SEGMENTS */}
             {WHEEL_NUMBERS.map((position, index) => {
               const isWinning = isResultPhase && 
                 winningPosition?.number === position.number && 
@@ -325,7 +429,7 @@ const RouletteWheel = ({
               return (
                 <path
                   key={`segment-${index}`}
-                  d={createSegmentPath(index, innerRadius, outerRadius, centerX, centerY)}
+                  d={createSegmentPath(index, mainSegmentInner, mainSegmentOuter, centerX, centerY)}
                   fill={position.color === 'black' ? 'url(#blackSegment)' : 'url(#whiteSegment)'}
                   stroke="#c9a227"
                   strokeWidth="1"
@@ -337,14 +441,12 @@ const RouletteWheel = ({
               );
             })}
             
-            {/* Draw numbers */}
+            {/* NUMBERS */}
             {WHEEL_NUMBERS.map((position, index) => {
               const midAngle = (index + 0.5) * ANGLE_PER_SLOT - 90;
               const midRad = midAngle * (Math.PI / 180);
               const textX = centerX + textRadius * Math.cos(midRad);
               const textY = centerY + textRadius * Math.sin(midRad);
-              
-              // Rotate text to be readable from outside
               const textRotation = midAngle + 90;
               
               return (
@@ -353,7 +455,7 @@ const RouletteWheel = ({
                   x={textX}
                   y={textY}
                   fill={position.color === 'black' ? '#ffffff' : '#000000'}
-                  fontSize="13"
+                  fontSize="12"
                   fontWeight="bold"
                   fontFamily="'Inter', Arial, sans-serif"
                   textAnchor="middle"
@@ -370,7 +472,7 @@ const RouletteWheel = ({
             <circle
               cx={centerX}
               cy={centerY}
-              r={innerRadius}
+              r={mainSegmentInner}
               fill="none"
               stroke="url(#goldGradient)"
               strokeWidth="4"
@@ -380,14 +482,14 @@ const RouletteWheel = ({
             <circle
               cx={centerX}
               cy={centerY}
-              r={innerRadius - 5}
+              r={mainSegmentInner - 5}
               fill="url(#goldGradient)"
             />
             
             <circle
               cx={centerX}
               cy={centerY}
-              r={innerRadius - 20}
+              r={mainSegmentInner - 20}
               fill="#b8860b"
               stroke="#8b6914"
               strokeWidth="3"
@@ -396,7 +498,7 @@ const RouletteWheel = ({
             <circle
               cx={centerX}
               cy={centerY}
-              r={innerRadius - 35}
+              r={mainSegmentInner - 35}
               fill="#d4af37"
             />
           </svg>
@@ -406,8 +508,8 @@ const RouletteWheel = ({
         <div 
           className="absolute z-20 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rounded-full flex items-center justify-center"
           style={{
-            width: innerRadius * 2 - 80,
-            height: innerRadius * 2 - 80,
+            width: (mainSegmentInner * 2) - 80,
+            height: (mainSegmentInner * 2) - 80,
             background: 'linear-gradient(145deg, #d4af37 0%, #b8860b 100%)',
             boxShadow: '0 4px 20px rgba(0,0,0,0.4), inset 0 2px 10px rgba(255,255,255,0.2)'
           }}
@@ -421,8 +523,8 @@ const RouletteWheel = ({
                   : 'bg-gradient-to-br from-white to-gray-100 text-black'}
               `}
               style={{
-                width: innerRadius * 2 - 100,
-                height: innerRadius * 2 - 100,
+                width: (mainSegmentInner * 2) - 100,
+                height: (mainSegmentInner * 2) - 100,
                 fontSize: '2.5rem',
                 border: '4px solid #d4af37',
                 boxShadow: '0 0 30px rgba(212, 175, 55, 0.6)',
@@ -433,6 +535,16 @@ const RouletteWheel = ({
             </div>
           )}
         </div>
+        
+        {/* Gold indicator badge */}
+        {goldIndex >= 0 && (
+          <div 
+            className="absolute z-30 top-2 right-2 bg-gradient-to-r from-yellow-400 to-yellow-600 text-black text-xs font-bold px-2 py-1 rounded-full shadow-lg"
+            style={{ boxShadow: '0 0 10px rgba(251, 191, 36, 0.6)' }}
+          >
+            🌟 Gold at #{WHEEL_NUMBERS[goldIndex].number}
+          </div>
+        )}
       </div>
       
       {/* Additional wheel for special bets */}
