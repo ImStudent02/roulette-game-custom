@@ -2,10 +2,9 @@
 
 import { useRef, useEffect, useState, memo } from 'react';
 import { WheelPosition } from '@/lib/types';
-import { generateMainWheel, generateAdditionalWheel, spinWheel } from '@/lib/gameUtils';
+import { generateAdditionalWheel } from '@/lib/gameUtils';
 import * as HyperParams from '@/lib/hyperParams';
 
-// Mathematical constant - since the wheel has 51 positions, each slot covers 7.06° (360° / 51)
 const ANGLE_PER_SLOT = 360 / 51;
 
 type RouletteWheelProps = {
@@ -17,224 +16,40 @@ type RouletteWheelProps = {
   className?: string;
 };
 
-// Helper function to shuffle an array (Fisher-Yates algorithm)
-const shuffleArray = <T,>(array: T[]): T[] => {
-  const newArray = [...array];
-  
-  for (let i = newArray.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
-  }
-  
-  return newArray;
-};
-
-// Create array of numbers 1-50
-const createNumbersArray = (): number[] => {
-  const numbers: number[] = [];
-  for (let i = 1; i <= 50; i++) {
-    numbers.push(i);
-  }
-  return numbers;
-};
-
-// Create a fixed wheel layout based on the reference image
 const createFixedWheelLayout = (): WheelPosition[] => {
-  // Numbers and colors are taken directly from the reference image
-  const wheelLayout: WheelPosition[] = [
-    { number: 26, color: 'black' },
-    { number: 44, color: 'black' },
-    { number: 21, color: 'black' },
-    { number: 20, color: 'black' },
-    { number: 33, color: 'black' },
-    { number: 14, color: 'black' },
-    { number: 15, color: 'black' },
-    { number: 22, color: 'black' },
-    { number: 31, color: 'black' },
-    { number: 43, color: 'black' },
-    
-    // Second row from left to right
-    { number: 48, color: 'black' },
-    { number: 8, color: 'black' },
-    { number: 3, color: 'black' },
-    { number: 13, color: 'black' },
-    { number: 30, color: 'black' },
-    { number: 18, color: 'black' },
-    { number: 24, color: 'black' },
-    { number: 'X', color: 'black' },
-    { number: 41, color: 'white' },
-    { number: 10, color: 'white' },
-    
-    // Third row from left to right
-    { number: 6, color: 'white' },
-    { number: 23, color: 'white' },
-    { number: 7, color: 'white' },
-    { number: 2, color: 'white' },
-    { number: 27, color: 'white' },
-    { number: 12, color: 'white' },
-    { number: 36, color: 'white' },
-    { number: 47, color: 'white' },
-    { number: 49, color: 'white' },
-    { number: 4, color: 'white' },
-    
-    // Fourth row from left to right
-    { number: 45, color: 'white' },
-    { number: 16, color: 'white' },
-    { number: 5, color: 'white' },
-    { number: 1, color: 'white' },
-    { number: 35, color: 'white' },
-    { number: 17, color: 'black' },
-    { number: 42, color: 'white' },
-    { number: 46, color: 'black' },
-    { number: 39, color: 'white' },
-    { number: 34, color: 'black' },
-    
-    // Fifth row from left to right
-    { number: 29, color: 'white' },
-    { number: 28, color: 'black' },
-    { number: 11, color: 'white' },
-    { number: 40, color: 'black' },
-    { number: 32, color: 'white' },
-    { number: 9, color: 'black' },
-    { number: 50, color: 'white' },
-    { number: 19, color: 'black' },
-    { number: 38, color: 'white' },
-    { number: 25, color: 'black' },
-    
-    // Last item
+  return [
+    { number: 26, color: 'black' }, { number: 44, color: 'black' },
+    { number: 21, color: 'black' }, { number: 20, color: 'black' },
+    { number: 33, color: 'black' }, { number: 14, color: 'black' },
+    { number: 15, color: 'black' }, { number: 22, color: 'black' },
+    { number: 31, color: 'black' }, { number: 43, color: 'black' },
+    { number: 48, color: 'black' }, { number: 8, color: 'black' },
+    { number: 3, color: 'black' }, { number: 13, color: 'black' },
+    { number: 30, color: 'black' }, { number: 18, color: 'black' },
+    { number: 24, color: 'black' }, { number: 'X', color: 'black' },
+    { number: 41, color: 'white' }, { number: 10, color: 'white' },
+    { number: 6, color: 'white' }, { number: 23, color: 'white' },
+    { number: 7, color: 'white' }, { number: 2, color: 'white' },
+    { number: 27, color: 'white' }, { number: 12, color: 'white' },
+    { number: 36, color: 'white' }, { number: 47, color: 'white' },
+    { number: 49, color: 'white' }, { number: 4, color: 'white' },
+    { number: 45, color: 'white' }, { number: 16, color: 'white' },
+    { number: 5, color: 'white' }, { number: 1, color: 'white' },
+    { number: 35, color: 'white' }, { number: 17, color: 'black' },
+    { number: 42, color: 'white' }, { number: 46, color: 'black' },
+    { number: 39, color: 'white' }, { number: 34, color: 'black' },
+    { number: 29, color: 'white' }, { number: 28, color: 'black' },
+    { number: 11, color: 'white' }, { number: 40, color: 'black' },
+    { number: 32, color: 'white' }, { number: 9, color: 'black' },
+    { number: 50, color: 'white' }, { number: 19, color: 'black' },
+    { number: 38, color: 'white' }, { number: 25, color: 'black' },
     { number: 37, color: 'white' }
   ];
-  
-  return wheelLayout;
 };
 
-// Use fixed layout
 const WHEEL_NUMBERS = createFixedWheelLayout();
-
-// Export for use in other components
 export { WHEEL_NUMBERS };
 
-// Ball component that follows the wheel
-const WheelBall = ({ 
-  isSpinning, 
-  wheelRotation, 
-  winningSlotAngle,
-  isResultPhase
-}: {
-  isSpinning: boolean;
-  wheelRotation: number;
-  winningSlotAngle?: number;
-  isResultPhase: boolean;
-}) => {
-  const ballRef = useRef<HTMLDivElement>(null);
-  
-//   useEffect(() => {
-//     if (!ballRef.current) return;
-    
-//     if (isSpinning) {
-//       // During active spin, the ball should follow the wheel but with slight lag and bounce effect
-//       ballRef.current.style.opacity = '1';
-      
-//       // Bouncing effect - makes the ball move in and out slightly
-//       const bounceEffect = Math.sin(wheelRotation / 30) * HyperParams.ANIMATION.ballBounceIntensity * 10;
-//       const laggingDegrees = Math.sin(wheelRotation / 20) * 5; // Slight lag effect
-      
-//       ballRef.current.style.transition = `transform 100ms ease-out`;
-//       ballRef.current.style.transform = `
-//         rotate(${wheelRotation - laggingDegrees}deg)
-//         translateY(${-47 + bounceEffect}%)
-//       `;
-//     } 
-//     else if (isResultPhase && winningSlotAngle !== undefined) {
-//       // When showing result, position the ball at the winning position
-//       ballRef.current.style.opacity = '1';
-//       ballRef.current.style.transition = `transform 500ms ease-out`;
-//       ballRef.current.style.transform = `
-//         rotate(${winningSlotAngle}deg)
-//         translateY(-47%)
-//       `;
-//     } 
-//     else {
-//       // Hide the ball when idle
-//       ballRef.current.style.opacity = '0';
-//     }
-//   }, [isSpinning, wheelRotation, winningSlotAngle, isResultPhase]);
-  
-//   // return (
-//   //   <div 
-//   //     ref={ballRef}
-//   //     className="absolute z-30 w-4 h-4 rounded-full bg-yellow-500 border border-yellow-600 shadow-md"
-//   //     style={{
-//   //       top: 'calc(50%)',
-//   //       left: 'calc(50%)',
-//   //       transformOrigin: 'center',
-//   //       opacity: 0,
-//   //       filter: 'drop-shadow(0 0 2px rgba(255, 215, 0, 0.8))',
-//   //     }}
-//   //   />
-//   // );
-//   return (
-//     <div
-//       ref={ballRef}
-//       className="absolute z-30 w-5 h-5 rounded-full bg-yellow-400 border-2 border-yellow-600 shadow-lg"
-//       style={{
-//         top: '50%',
-//         left: '50%',
-//         transform: 'translate(-50%, -50%)',
-//         transformOrigin: 'center',
-//         opacity: 0,
-//         filter: 'drop-shadow(0 0 4px rgba(255, 215, 0, 0.9))',
-//       }}
-//     />
-//   );
-  
-// };
-useEffect(() => {
-  if (!ballRef.current) return;
-
-  if (isSpinning) {
-    ballRef.current.style.opacity = '1';
-
-    // Define ball movement parameters
-    const bounceEffect = Math.sin(wheelRotation / 15) * HyperParams.ANIMATION.ballBounceIntensity * 8; // Realistic bounce
-    const laggingDegrees = Math.sin(wheelRotation / 12) * 5; // Smooth lag effect
-    const radius = 1000; // Distance from center (adjust if needed)
-
-    ballRef.current.style.transition = `transform 50ms ease-out`;
-    ballRef.current.style.transform = `
-      rotate(${wheelRotation - laggingDegrees}deg) 
-      translate(${radius}%) 
-      translateY(${bounceEffect}px)
-    `;
-  } 
-  else if (isResultPhase && winningSlotAngle !== undefined) {
-    ballRef.current.style.opacity = '1';
-    ballRef.current.style.transition = `transform 700ms ease-out`;
-    ballRef.current.style.transform = `
-      rotate(${winningSlotAngle}deg) 
-      translate(${95}%) 
-      translateY(0px)
-    `;
-  } 
-  else {
-    ballRef.current.style.opacity = '0';
-  }
-  }, [isSpinning, wheelRotation, winningSlotAngle, isResultPhase]);
-  return (
-      // <div
-      //   ref={ballRef}
-      //   className="absolute z-30 w-5 h-5 rounded-full bg-yellow-400 border-2 border-yellow-600 shadow-lg"
-      //   style={{
-      //     top: '50%',
-      //     left: '50%',
-      //     transformOrigin: 'center',
-      //     opacity: 0,
-      //     filter: 'drop-shadow(0 0 4px rgba(255, 215, 0, 0.9))',
-      //   }}
-      // />
-      <div></div>
-    );
-  }
 const RouletteWheel = ({
   onSpinComplete,
   isSpinning,
@@ -243,41 +58,33 @@ const RouletteWheel = ({
   spinTwice = false,
   className = '',
 }: RouletteWheelProps) => {
-  // Refs for wheel elements
   const wheelRef = useRef<HTMLDivElement>(null);
   const additionalWheelRef = useRef<HTMLDivElement>(null);
   
-  // State for wheel rotation and animation
   const [wheelRotation, setWheelRotation] = useState<number>(0);
   const [additionalWheelRotation, setAdditionalWheelRotation] = useState<number>(0);
   const [additionalWheel] = useState<WheelPosition[]>(generateAdditionalWheel());
   const [activeSpin, setActiveSpin] = useState<boolean>(false);
   const [isResultPhase, setIsResultPhase] = useState<boolean>(false);
-  const [winningSlotAngle, setWinningSlotAngle] = useState<number | undefined>(undefined);
   
-  // Refs to track the current animation
   const slowSpinIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const activeSpinTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const resultTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const completedSpinRef = useRef<boolean>(false);
   
-  // Track selected winning positions
   const winPositionRef = useRef<WheelPosition | null>(null);
   const secondWinPositionRef = useRef<WheelPosition | null>(null);
 
+  const wheelSize = 400;
   
-  // Add transition end event listener to ensure spin completion
   useEffect(() => {
     const wheelElement = wheelRef.current;
     
     const handleTransitionEnd = () => {
       if (activeSpin && !completedSpinRef.current) {
-        // The wheel has finished spinning
         completedSpinRef.current = true;
         setActiveSpin(false);
         setIsResultPhase(true);
         
-        // Call onSpinComplete with our saved winning positions
         if (onSpinComplete && winPositionRef.current) {
           const secondPos = secondWinPositionRef.current || undefined;
           onSpinComplete(winPositionRef.current, secondPos);
@@ -296,41 +103,26 @@ const RouletteWheel = ({
     };
   }, [onSpinComplete, activeSpin]);
   
-  // Calculate the winning position angle
   useEffect(() => {
     if (winningPosition) {
-      const winningIndex = WHEEL_NUMBERS.findIndex(pos => 
-        pos.number === winningPosition.number && pos.color === winningPosition.color
-      );
-      
-      if (winningIndex !== -1) {
-        const angle = winningIndex * ANGLE_PER_SLOT;
-        setWinningSlotAngle(angle);
-        setIsResultPhase(true);
-      }
+      setIsResultPhase(true);
     } else {
-      setWinningSlotAngle(undefined);
       setIsResultPhase(false);
     }
   }, [winningPosition]);
   
-  // Slow continuous rotation ONLY when idle (no result shown and not actively spinning)
   useEffect(() => {
-    // Only start slow rotation if there's no winning position and not actively spinning
     if (!isSpinning && !activeSpin && !isResultPhase) {
-      // Clear any existing interval
       if (slowSpinIntervalRef.current) {
         clearInterval(slowSpinIntervalRef.current);
         slowSpinIntervalRef.current = null;
       }
       
-      // Start slow continuous rotation
       slowSpinIntervalRef.current = setInterval(() => {
         setWheelRotation(prev => prev + HyperParams.ANIMATION.idleSpinSpeed);
         setAdditionalWheelRotation(prev => prev + HyperParams.ANIMATION.idleSpinSpeed * 1.2);
       }, 50);
     } else if (slowSpinIntervalRef.current) {
-      // Stop slow rotation in all other cases
       clearInterval(slowSpinIntervalRef.current);
       slowSpinIntervalRef.current = null;
     }
@@ -343,266 +135,395 @@ const RouletteWheel = ({
     };
   }, [isSpinning, activeSpin, isResultPhase]);
   
-  // Handle the active spinning animation
   useEffect(() => {
-    // Only start spinning if isSpinning is true and we're not already in an active spin
     if (isSpinning && !activeSpin) {
-      // Reset completion flag
       completedSpinRef.current = false;
-      
-      // Clear any existing timeouts/intervals to prevent memory leaks
-      if (resultTimeoutRef.current) {
-        clearTimeout(resultTimeoutRef.current);
-        resultTimeoutRef.current = null;
-      }
       
       if (activeSpinTimeoutRef.current) {
         clearTimeout(activeSpinTimeoutRef.current);
         activeSpinTimeoutRef.current = null;
       }
       
-      // Start active spinning
       setActiveSpin(true);
       setIsResultPhase(false);
       
-      // Clear slow rotation interval
       if (slowSpinIntervalRef.current) {
         clearInterval(slowSpinIntervalRef.current);
         slowSpinIntervalRef.current = null;
       }
       
-      // Determine random winning position
       const randomIndex = Math.floor(Math.random() * WHEEL_NUMBERS.length);
       const winPosition = WHEEL_NUMBERS[randomIndex];
       
-      // Save the winning position to ref for the transitionend event
       winPositionRef.current = winPosition;
       secondWinPositionRef.current = null;
       
-      // Calculate target angle for the winning position
-      const targetAngle = randomIndex * ANGLE_PER_SLOT;
+      // Calculate the angle to rotate so winning segment ends up at the TOP (under the arrow)
+      // Each segment spans ANGLE_PER_SLOT degrees, and we want the CENTER of the winning segment at top
+      // Segment N's center is at angle: (N + 0.5) * ANGLE_PER_SLOT from the starting position
+      // To bring it to top, we rotate by the NEGATIVE of that (or 360 - that angle for clockwise spin)
+      const segmentCenterAngle = (randomIndex + 0.5) * ANGLE_PER_SLOT;
+      const targetAngle = 360 - segmentCenterAngle; // Rotate so segment comes to top
       
-      // Apply multiple rotations plus the target angle for dramatic effect
       const rotations = HyperParams.ANIMATION.minRotations + 
         Math.floor(Math.random() * (HyperParams.ANIMATION.maxRotations - HyperParams.ANIMATION.minRotations));
       const newRotation = (wheelRotation - (wheelRotation % 360)) + rotations * 360 + targetAngle;
       
-      // Apply animation
       if (wheelRef.current) {
         wheelRef.current.style.transition = `transform ${HyperParams.ANIMATION.spinDuration}ms cubic-bezier(0.2, 0.8, 0.3, 0.9)`;
         wheelRef.current.style.transform = `rotate(${newRotation}deg)`;
       }
       
-      // Handle additional wheel if needed
       if (spinTwice && additionalWheelRef.current) {
         const additionalRandomIndex = Math.floor(Math.random() * additionalWheel.length);
         const secondWinPosition = additionalWheel[additionalRandomIndex];
         
-        // Save to ref
         secondWinPositionRef.current = secondWinPosition;
         
         const additionalTargetAngle = additionalRandomIndex * (360 / additionalWheel.length);
         
-        const additionalRotations = rotations - 2 + Math.floor(Math.random() * 4); // Slightly different rotation count
+        const additionalRotations = rotations - 2 + Math.floor(Math.random() * 4);
         const newAdditionalRotation = (additionalWheelRotation - (additionalWheelRotation % 360)) + 
           additionalRotations * 360 + additionalTargetAngle;
         
         additionalWheelRef.current.style.transition = `transform ${HyperParams.ANIMATION.spinDuration + 500}ms cubic-bezier(0.15, 0.85, 0.35, 0.95)`;
         additionalWheelRef.current.style.transform = `rotate(${newAdditionalRotation}deg)`;
         
-        // Update state with new rotation
         setAdditionalWheelRotation(newAdditionalRotation);
       }
       
-      // Update state with new rotation
       setWheelRotation(newRotation);
       
-      // Backup timeout in case the transition end event doesn't fire for some reason
       activeSpinTimeoutRef.current = setTimeout(() => {
         if (!completedSpinRef.current) {
           completedSpinRef.current = true;
           setActiveSpin(false);
           setIsResultPhase(true);
           
-          // Call onSpinComplete with the winning positions
           if (onSpinComplete && winPositionRef.current) {
             const secondPos = secondWinPositionRef.current || undefined;
             onSpinComplete(winPositionRef.current, secondPos);
           }
         }
-      }, HyperParams.ANIMATION.spinDuration + 500); // Add a buffer to ensure transition completes
+      }, HyperParams.ANIMATION.spinDuration + 500);
     }
     
     return () => {
-      // Clean up all timeouts and intervals to prevent memory leaks and state issues
       if (activeSpinTimeoutRef.current) {
         clearTimeout(activeSpinTimeoutRef.current);
         activeSpinTimeoutRef.current = null;
       }
-      
-      if (resultTimeoutRef.current) {
-        clearTimeout(resultTimeoutRef.current);
-        resultTimeoutRef.current = null;
-      }
     };
   }, [isSpinning, activeSpin, additionalWheel, onSpinComplete, spinTwice, wheelRotation, additionalWheelRotation]);
   
+  // Generate SVG path for a wheel segment
+  const createSegmentPath = (index: number, innerRadius: number, outerRadius: number, centerX: number, centerY: number) => {
+    const startAngle = (index * ANGLE_PER_SLOT - 90) * (Math.PI / 180);
+    const endAngle = ((index + 1) * ANGLE_PER_SLOT - 90) * (Math.PI / 180);
+    
+    const x1 = centerX + outerRadius * Math.cos(startAngle);
+    const y1 = centerY + outerRadius * Math.sin(startAngle);
+    const x2 = centerX + outerRadius * Math.cos(endAngle);
+    const y2 = centerY + outerRadius * Math.sin(endAngle);
+    const x3 = centerX + innerRadius * Math.cos(endAngle);
+    const y3 = centerY + innerRadius * Math.sin(endAngle);
+    const x4 = centerX + innerRadius * Math.cos(startAngle);
+    const y4 = centerY + innerRadius * Math.sin(startAngle);
+    
+    return `M ${x1} ${y1} A ${outerRadius} ${outerRadius} 0 0 1 ${x2} ${y2} L ${x3} ${y3} A ${innerRadius} ${innerRadius} 0 0 0 ${x4} ${y4} Z`;
+  };
+  
+  const centerX = wheelSize / 2;
+  const centerY = wheelSize / 2;
+  const outerRadius = wheelSize / 2 - 10;
+  const innerRadius = wheelSize / 2 - 70;
+  const textRadius = (outerRadius + innerRadius) / 2;
+  
   return (
-    <div className={`relative mx-auto w-full ${className}`}>
-      {/* Main wheel */}
-      <div className="relative w-full max-w-md mx-auto aspect-square rounded-full border-8 border-[#6b4c41] overflow-hidden bg-pink-300 shadow-xl">
-        {/* Center circle */}
-        <div className="absolute z-20 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-[#6b4c41] border-4 border-[#5a3e36] flex items-center justify-center">
-          {winningPosition && isResultPhase && (
-            <div 
-              className={`
-                w-10 h-10 rounded-full flex items-center justify-center
-                ${winningPosition.color === 'black' ? 'bg-black text-white' : 'bg-white text-black'}
-                font-bold text-lg border-2 border-yellow-400
-              `}
-            >
-              {winningPosition.number}
-            </div>
-          )}
-        </div>
+    <div className={`relative mx-auto ${className}`} style={{ maxWidth: wheelSize + 40 }}>
+      {/* Glow effect */}
+      <div 
+        className="absolute inset-0 rounded-full opacity-50"
+        style={{
+          background: 'radial-gradient(circle, rgba(212,175,55,0.3) 0%, transparent 60%)',
+          transform: 'scale(1.2)',
+          filter: 'blur(30px)'
+        }}
+      />
+      
+      {/* Main wheel container */}
+      <div 
+        className="relative mx-auto rounded-full"
+        style={{ 
+          width: wheelSize, 
+          height: wheelSize,
+          background: 'linear-gradient(145deg, #2d2010 0%, #1a1208 100%)',
+          boxShadow: `
+            0 0 0 10px #b8860b,
+            0 0 0 14px #8b6914,
+            0 0 0 18px rgba(212, 175, 55, 0.3),
+            0 0 60px rgba(0, 0, 0, 0.8),
+            inset 0 0 60px rgba(0, 0, 0, 0.5)
+          `
+        }}
+      >
+        {/* Pointer at top */}
+        <div 
+          className="absolute z-30"
+          style={{
+            top: -12,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 0,
+            height: 0,
+            borderLeft: '18px solid transparent',
+            borderRight: '18px solid transparent',
+            borderTop: '32px solid #d4af37',
+            filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.6))'
+          }}
+        />
         
-        {/* The spinning wheel */}
+        {/* Spinning wheel */}
         <div 
           ref={wheelRef}
-          className="absolute inset-0 z-10"
+          className="absolute inset-0"
           style={{ 
             transformOrigin: 'center center',
             transform: `rotate(${wheelRotation}deg)` 
           }}
         >
-          {/* Draw wheel rays for visual effect */}
-          {WHEEL_NUMBERS.map((_, index) => {
-            const angle = index * ANGLE_PER_SLOT;
-            return (
-              <div 
-                key={`ray-${index}`}
-                className="absolute top-1/2 left-1/2 h-1/2 w-0.5 bg-[#5a3e36]"
-                style={{ 
-                  transformOrigin: 'top center',
-                  transform: `rotate(${angle}deg)` 
-                }}
-              />
-            );
-          })}
-          
-          {/* Map the wheel positions to numbers positioned around the wheel */}
-          {WHEEL_NUMBERS.map((position, index) => {
-            const angle = index * ANGLE_PER_SLOT;
-            const radians = (angle * Math.PI) / 180;
-            
-            // Position numbers at the edge of the wheel
-            const radius = 47; // Percentage from center
-            const x = 50 + radius * Math.sin(radians);
-            const y = 50 - radius * Math.cos(radians);
-            
-            const { number, color } = position;
-            const bgColor = color === 'black' ? 'bg-black' : 'bg-white';
-            const textColor = color === 'black' ? 'text-white' : 'text-black';
-            
-            return (
-              <div
-                key={`position-${index}`}
-                className={`absolute w-8 h-8 flex items-center justify-center rounded-full ${bgColor} ${textColor} text-sm md:text-base font-bold border-2 border-[#5a3e36]`}
-                style={{
-                  top: `${y}%`,
-                  left: `${x}%`,
-                  transform: `translate(-50%, -50%) rotate(${angle}deg)`,
-                }}
-              >
-                <span style={{ transform: `rotate(${-angle}deg)` }}>{number}</span>
-              </div>
-            );
-          })}
-        </div>
-        
-        {/* Ball that follows the wheel */}
-        <WheelBall 
-          isSpinning={activeSpin} 
-          wheelRotation={wheelRotation} 
-          winningSlotAngle={winningSlotAngle}
-          isResultPhase={isResultPhase}
-        />
-      </div>
-      
-      {/* Additional wheel for special bets (displayed when spinTwice is true) */}
-      {spinTwice && (
-        <div className="mt-6 relative w-full max-w-xs mx-auto aspect-square rounded-full border-8 border-[#6b4c41] overflow-hidden bg-[#192231] shadow-xl">
-          <div className="absolute z-20 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-[#6b4c41] border-4 border-[#5a3e36] flex items-center justify-center">
-            {secondWinningPosition && isResultPhase && (
-              <div 
-                className={`
-                  w-8 h-8 rounded-full flex items-center justify-center
-                  ${secondWinningPosition.color === 'black' ? 'bg-black text-white' : 
-                    secondWinningPosition.color === 'white' ? 'bg-white text-black' :
-                    secondWinningPosition.color === 'green' ? 'bg-green-500 text-white' :
-                    secondWinningPosition.color === 'pink' ? 'bg-pink-500 text-white' :
-                    secondWinningPosition.color === 'gold' ? 'bg-yellow-500 text-black' :
-                    'bg-red-600 text-white'
-                  }
-                  font-bold text-sm border-2 border-yellow-400
-                `}
-              >
-                {secondWinningPosition.number}
-              </div>
-            )}
-          </div>
-          
-          <div 
-            ref={additionalWheelRef}
-            className="absolute inset-0 z-10"
-            style={{ 
-              transformOrigin: 'center center',
-              transform: `rotate(${additionalWheelRotation}deg)` 
-            }}
+          <svg 
+            width={wheelSize} 
+            height={wheelSize} 
+            viewBox={`0 0 ${wheelSize} ${wheelSize}`}
+            className="w-full h-full"
           >
-            {/* Draw rays */}
-            {additionalWheel.map((_, index) => {
-              const angle = index * (360 / additionalWheel.length);
+            <defs>
+              <linearGradient id="blackSegment" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#2a2a2a" />
+                <stop offset="50%" stopColor="#1a1a1a" />
+                <stop offset="100%" stopColor="#0a0a0a" />
+              </linearGradient>
+              <linearGradient id="whiteSegment" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#ffffff" />
+                <stop offset="50%" stopColor="#f0f0f0" />
+                <stop offset="100%" stopColor="#e0e0e0" />
+              </linearGradient>
+              <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#f4d03f" />
+                <stop offset="50%" stopColor="#d4af37" />
+                <stop offset="100%" stopColor="#b8860b" />
+              </linearGradient>
+            </defs>
+            
+            {/* Draw segments */}
+            {WHEEL_NUMBERS.map((position, index) => {
+              const isWinning = isResultPhase && 
+                winningPosition?.number === position.number && 
+                winningPosition?.color === position.color;
+              
               return (
-                <div 
-                  key={`add-ray-${index}`}
-                  className="absolute top-1/2 left-1/2 h-1/2 w-0.5 bg-[#5a3e36]"
-                  style={{ 
-                    transformOrigin: 'top center',
-                    transform: `rotate(${angle}deg)` 
+                <path
+                  key={`segment-${index}`}
+                  d={createSegmentPath(index, innerRadius, outerRadius, centerX, centerY)}
+                  fill={position.color === 'black' ? 'url(#blackSegment)' : 'url(#whiteSegment)'}
+                  stroke="#c9a227"
+                  strokeWidth="1"
+                  className={isWinning ? 'animate-pulse' : ''}
+                  style={{
+                    filter: isWinning ? 'brightness(1.3) drop-shadow(0 0 10px #ffd700)' : undefined
                   }}
                 />
               );
             })}
             
-            {additionalWheel.map((position, index) => {
-              const angle = index * (360 / additionalWheel.length);
-              const radians = (angle * Math.PI) / 180;
+            {/* Draw numbers */}
+            {WHEEL_NUMBERS.map((position, index) => {
+              const midAngle = (index + 0.5) * ANGLE_PER_SLOT - 90;
+              const midRad = midAngle * (Math.PI / 180);
+              const textX = centerX + textRadius * Math.cos(midRad);
+              const textY = centerY + textRadius * Math.sin(midRad);
               
-              const radius = 45;
-              const x = 50 + radius * Math.sin(radians);
-              const y = 50 - radius * Math.cos(radians);
-              
-              const { color } = position;
-              let bgColorClass = 'bg-red-600';
-              if (color === 'green') bgColorClass = 'bg-green-500';
-              else if (color === 'pink') bgColorClass = 'bg-pink-500';
-              else if (color === 'gold') bgColorClass = 'bg-yellow-500';
+              // Rotate text to be readable from outside
+              const textRotation = midAngle + 90;
               
               return (
-                <div
-                  key={`add-position-${index}`}
-                  className={`absolute w-6 h-6 flex items-center justify-center rounded-full ${bgColorClass} text-white text-xs font-bold border border-[#5a3e36]`}
-                  style={{
-                    top: `${y}%`,
-                    left: `${x}%`,
-                    transform: `translate(-50%, -50%) rotate(${angle}deg)`,
-                  }}
+                <text
+                  key={`number-${index}`}
+                  x={textX}
+                  y={textY}
+                  fill={position.color === 'black' ? '#ffffff' : '#000000'}
+                  fontSize="13"
+                  fontWeight="bold"
+                  fontFamily="'Inter', Arial, sans-serif"
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  transform={`rotate(${textRotation}, ${textX}, ${textY})`}
+                  style={{ userSelect: 'none' }}
                 >
-                  <span style={{ transform: `rotate(${-angle}deg)` }}>{position.number}</span>
-                </div>
+                  {position.number}
+                </text>
               );
             })}
+            
+            {/* Inner gold ring */}
+            <circle
+              cx={centerX}
+              cy={centerY}
+              r={innerRadius}
+              fill="none"
+              stroke="url(#goldGradient)"
+              strokeWidth="4"
+            />
+            
+            {/* Center hub */}
+            <circle
+              cx={centerX}
+              cy={centerY}
+              r={innerRadius - 5}
+              fill="url(#goldGradient)"
+            />
+            
+            <circle
+              cx={centerX}
+              cy={centerY}
+              r={innerRadius - 20}
+              fill="#b8860b"
+              stroke="#8b6914"
+              strokeWidth="3"
+            />
+            
+            <circle
+              cx={centerX}
+              cy={centerY}
+              r={innerRadius - 35}
+              fill="#d4af37"
+            />
+          </svg>
+        </div>
+
+        {/* Center result display (overlay, doesn't spin) */}
+        <div 
+          className="absolute z-20 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rounded-full flex items-center justify-center"
+          style={{
+            width: innerRadius * 2 - 80,
+            height: innerRadius * 2 - 80,
+            background: 'linear-gradient(145deg, #d4af37 0%, #b8860b 100%)',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.4), inset 0 2px 10px rgba(255,255,255,0.2)'
+          }}
+        >
+          {winningPosition && isResultPhase && (
+            <div 
+              className={`
+                rounded-full flex items-center justify-center font-bold shadow-xl
+                ${winningPosition.color === 'black' 
+                  ? 'bg-gradient-to-br from-gray-800 to-black text-white' 
+                  : 'bg-gradient-to-br from-white to-gray-100 text-black'}
+              `}
+              style={{
+                width: innerRadius * 2 - 100,
+                height: innerRadius * 2 - 100,
+                fontSize: '2.5rem',
+                border: '4px solid #d4af37',
+                boxShadow: '0 0 30px rgba(212, 175, 55, 0.6)',
+                animation: 'pulse 1.5s ease-in-out infinite'
+              }}
+            >
+              {winningPosition.number}
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {/* Additional wheel for special bets */}
+      {spinTwice && (
+        <div className="mt-8 relative w-full max-w-xs mx-auto">
+          <div 
+            className="relative mx-auto rounded-full overflow-hidden"
+            style={{
+              width: 200,
+              height: 200,
+              background: 'linear-gradient(145deg, #2d1810 0%, #1a0f0a 100%)',
+              boxShadow: '0 0 0 6px #6b4c41, 0 0 30px rgba(0,0,0,0.5)'
+            }}
+          >
+            <div 
+              className="absolute z-20 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-full flex items-center justify-center"
+              style={{
+                background: 'linear-gradient(145deg, #8b6347 0%, #5a3e36 100%)',
+                border: '3px solid #5a3e36'
+              }}
+            >
+              {secondWinningPosition && isResultPhase && (
+                <div 
+                  className={`
+                    w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm
+                    ${secondWinningPosition.color === 'black' ? 'bg-black text-white' : 
+                      secondWinningPosition.color === 'white' ? 'bg-white text-black' :
+                      secondWinningPosition.color === 'green' ? 'bg-green-500 text-white' :
+                      secondWinningPosition.color === 'pink' ? 'bg-pink-500 text-white' :
+                      secondWinningPosition.color === 'gold' ? 'bg-yellow-500 text-black' :
+                      'bg-red-600 text-white'}
+                    border-2 border-yellow-400
+                  `}
+                >
+                  {secondWinningPosition.number}
+                </div>
+              )}
+            </div>
+            
+            <div 
+              ref={additionalWheelRef}
+              className="absolute inset-0 z-10"
+              style={{ 
+                transformOrigin: 'center center',
+                transform: `rotate(${additionalWheelRotation}deg)` 
+              }}
+            >
+              {additionalWheel.map((_, index) => {
+                const angle = index * (360 / additionalWheel.length);
+                return (
+                  <div 
+                    key={`add-ray-${index}`}
+                    className="absolute top-1/2 left-1/2 h-1/2 w-0.5"
+                    style={{ 
+                      transformOrigin: 'top center',
+                      transform: `rotate(${angle}deg)`,
+                      background: 'linear-gradient(to bottom, #5a3e36, transparent)'
+                    }}
+                  />
+                );
+              })}
+              
+              {additionalWheel.map((position, index) => {
+                const angle = index * (360 / additionalWheel.length);
+                const radians = (angle * Math.PI) / 180;
+                
+                const radius = 42;
+                const x = 50 + radius * Math.sin(radians);
+                const y = 50 - radius * Math.cos(radians);
+                
+                const { color } = position;
+                let bgClass = 'from-red-500 to-red-700';
+                if (color === 'green') bgClass = 'from-green-400 to-green-600';
+                else if (color === 'pink') bgClass = 'from-pink-400 to-pink-600';
+                else if (color === 'gold') bgClass = 'from-yellow-400 to-yellow-600';
+                
+                return (
+                  <div
+                    key={`add-position-${index}`}
+                    className={`absolute w-7 h-7 flex items-center justify-center rounded-full bg-gradient-to-br ${bgClass} text-white text-xs font-bold border-2 border-[#5a3e36] shadow-md`}
+                    style={{
+                      top: `${y}%`,
+                      left: `${x}%`,
+                      transform: `translate(-50%, -50%) rotate(${angle}deg)`,
+                    }}
+                  >
+                    <span style={{ transform: `rotate(${-angle}deg)` }}>{position.number}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
@@ -610,4 +531,4 @@ const RouletteWheel = ({
   );
 };
 
-export default memo(RouletteWheel); 
+export default memo(RouletteWheel);

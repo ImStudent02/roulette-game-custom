@@ -8,7 +8,7 @@ import BettingTable from './BettingTable';
 import ActiveBets from './ActiveBets';
 import BetHistory from './BetHistory';
 
-// Simple loading spinner component
+// Premium loading spinner component
 const LoadingSpinner = ({ 
   size = 'md' as const, 
   className = '' 
@@ -17,30 +17,21 @@ const LoadingSpinner = ({
   className?: string;
 }) => {
   const sizeClasses = {
-    sm: 'w-4 h-4 border-2',
-    md: 'w-8 h-8 border-3',
-    lg: 'w-12 h-12 border-4',
+    sm: 'w-5 h-5',
+    md: 'w-10 h-10',
+    lg: 'w-16 h-16',
   };
   
   return (
     <div className={`inline-block ${className}`} aria-label="Loading">
-      <div 
-        className={`
-          ${sizeClasses[size]} 
-          text-white
-          rounded-full 
-          border-solid 
-          border-t-transparent 
-          animate-spin
-        `}
-      />
+      <div className={`${sizeClasses[size]} spinner`} />
     </div>
   );
 };
 
 // Initial game state
 const initialState: GameState = {
-  balance: 1000, // Starting balance
+  balance: 1000,
   currentBets: [],
   isSpinning: false,
   lastWinnings: 0,
@@ -49,7 +40,6 @@ const initialState: GameState = {
 };
 
 const RouletteGame = () => {
-  // State management with optimizations
   const [gameState, setGameState] = useState<GameState>(initialState);
   const [spinTwice, setSpinTwice] = useState(false);
   const [cheatInput, setCheatInput] = useState('');
@@ -71,10 +61,8 @@ const RouletteGame = () => {
     return gameState.currentBets.reduce((sum, bet) => sum + bet.amount, 0);
   }, [gameState.currentBets]);
   
-  // Safe state update using function to avoid stale closures
   const addBet = useCallback((bet: Bet) => {
     setGameState(prev => {
-      // Check if we have balance
       if (bet.amount > prev.balance) return prev;
       
       return {
@@ -99,31 +87,24 @@ const RouletteGame = () => {
   }, []);
   
   const handleSpinComplete = useCallback((position: WheelPosition, secondPosition?: WheelPosition) => {
-    // Clear any existing timeouts to prevent memory leaks
     setShowingResults(true);
     
-    // Set a timeout to clear the results display after 3 seconds
     const resultTimeoutId = setTimeout(() => {
       setShowingResults(false);
     }, 3000);
 
     setGameState(prev => {
-      // Calculate winnings based on bets
       let totalWinnings = 0;
       const newBetHistory: BetHistoryItem[] = [];
       
-      // Process each bet to see if it's a winner
       prev.currentBets.forEach(bet => {
         let betWon = false;
         let winAmount = 0;
         
-        // Check against main position
         if (isBetWinner(bet, position)) {
-          // Get multiplier
           let multiplier: number;
           
           if (typeof multipliers[bet.type] === 'function') {
-            // For Gold which has variable multiplier
             multiplier = (multipliers[bet.type] as any)(position);
           } else {
             multiplier = multipliers[bet.type] as number;
@@ -134,9 +115,7 @@ const RouletteGame = () => {
           betWon = true;
         }
         
-        // Check against second position if applicable
         if (secondPosition && isBetWinner(bet, secondPosition)) {
-          // Get multiplier (same logic as above)
           let multiplier: number;
           
           if (typeof multipliers[bet.type] === 'function') {
@@ -151,7 +130,6 @@ const RouletteGame = () => {
           betWon = true;
         }
         
-        // Add to bet history
         newBetHistory.push({
           id: generateBetId(),
           betType: bet.type,
@@ -179,25 +157,22 @@ const RouletteGame = () => {
       return {
         ...prev,
         balance: prev.balance + totalWinnings,
-        currentBets: [], // Clear bets
+        currentBets: [],
         winningPosition: position,
         secondWinningPosition: secondPosition,
-        isSpinning: false, // Immediately set spinning to false
+        isSpinning: false,
         lastWinnings: totalWinnings,
         history: newWheelHistory,
         betHistory: updatedBetHistory,
       };
     });
     
-    // Cleanup function to clear timeout when component unmounts or callback changes
     return () => clearTimeout(resultTimeoutId);
   }, []);
   
   const startSpin = useCallback(() => {
-    // Can't spin if no bets or already spinning or showing results
     if (gameState.currentBets.length === 0 || gameState.isSpinning || showingResults) return;
     
-    // Reset previous results
     setGameState(prev => ({
       ...prev,
       isSpinning: true,
@@ -207,7 +182,6 @@ const RouletteGame = () => {
     }));
   }, [gameState.currentBets.length, gameState.isSpinning, showingResults]);
   
-  // Handle cheat code input
   const handleCheatInput = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       const bonus = applyCheatCode(cheatInput);
@@ -221,7 +195,7 @@ const RouletteGame = () => {
     }
   }, [cheatInput]);
   
-  // Auto-save game state to localStorage for persistence
+  // Auto-save game state to localStorage
   useEffect(() => {
     try {
       localStorage.setItem('rouletteGameState', JSON.stringify({
@@ -229,7 +203,7 @@ const RouletteGame = () => {
         history: gameState.history,
         betHistory: gameState.betHistory,
       }));
-    } catch (error) {
+    } catch {
       // Ignore storage errors
     }
   }, [gameState.balance, gameState.history, gameState.betHistory]);
@@ -247,77 +221,94 @@ const RouletteGame = () => {
           betHistory: parsed.betHistory || prev.betHistory,
         }));
       }
-    } catch (error) {
+    } catch {
       // Ignore storage errors
     }
     
-    // Simulate loading time for initial rendering
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 500);
+    }, 800);
     
     return () => clearTimeout(timer);
   }, []);
   
-  // Show loading spinner during initial load
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#121824] text-white flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <LoadingSpinner size="lg" className="mb-4" />
-          <p className="text-xl font-bold">Loading Roulette Game...</p>
+          <LoadingSpinner size="lg" className="mx-auto mb-6" />
+          <h2 className="text-2xl font-bold title-gradient">Loading Casino...</h2>
+          <p className="text-gray-500 mt-2">Preparing your premium experience</p>
         </div>
       </div>
     );
   }
   
   return (
-    <div className="min-h-screen bg-[#121824] text-white p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        <header className="mb-6">
+    <div className="min-h-screen text-white">
+      {/* Header */}
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#08080c]/80 border-b border-[rgba(212,175,55,0.15)]">
+        <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <h1 className="text-3xl font-bold">Roulette</h1>
+            <h1 className="text-3xl md:text-4xl font-bold title-gradient tracking-tight">
+              ROULETTE
+            </h1>
             
-            <div className="flex flex-wrap gap-3">
-              <div className="bg-[#192231] px-4 py-2 rounded-lg flex items-center">
-                <span className="text-gray-400 mr-2">Balance:</span>
-                <span className="font-bold text-green-400">{gameState.balance}</span>
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Balance Display */}
+              <div className="glass-card px-5 py-3 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#f4d03f] to-[#b8860b] flex items-center justify-center">
+                  <span className="text-black font-bold text-sm">$</span>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wider">Balance</p>
+                  <p className="font-bold text-xl text-[#d4af37]">{gameState.balance.toLocaleString()}</p>
+                </div>
               </div>
               
+              {/* Winnings Display */}
               {showingResults && gameState.lastWinnings > 0 && (
-                <div className="bg-green-800 px-4 py-2 rounded-lg animate-pulse">
-                  <span className="text-gray-200 mr-2">Won:</span>
-                  <span className="font-bold">{gameState.lastWinnings}</span>
+                <div className="glass-card px-5 py-3 winning-glow">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider">Won!</p>
+                  <p className="font-bold text-xl text-[#4ade80]">+{gameState.lastWinnings.toLocaleString()}</p>
                 </div>
               )}
               
-              {/* Cheat code input */}
-              <div className="relative">
+              {/* Cheat Input */}
+              <div className="relative hidden md:block">
                 <input
                   type="text"
                   value={cheatInput}
                   onChange={(e) => setCheatInput(e.target.value)}
                   onKeyDown={handleCheatInput}
-                  placeholder="Cheat code"
-                  className="bg-[#192231] px-4 py-2 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter code..."
+                  className="w-36 glass-card px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#d4af37]/50 bg-transparent"
                 />
               </div>
             </div>
           </div>
-        </header>
-        
-        <div className="mb-6">
-          <RouletteWheel 
-            onSpinComplete={handleSpinComplete} 
-            isSpinning={gameState.isSpinning}
-            winningPosition={gameState.winningPosition}
-            secondWinningPosition={gameState.secondWinningPosition}
-            spinTwice={spinTwice}
-          />
         </div>
+      </header>
+      
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        {/* Wheel Section */}
+        <section className="mb-10">
+          <div className="flex justify-center">
+            <RouletteWheel 
+              onSpinComplete={handleSpinComplete} 
+              isSpinning={gameState.isSpinning}
+              winningPosition={gameState.winningPosition}
+              secondWinningPosition={gameState.secondWinningPosition}
+              spinTwice={spinTwice}
+            />
+          </div>
+        </section>
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
+        {/* Game Controls Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Betting Table - Takes most space */}
+          <div className="lg:col-span-8">
             <BettingTable 
               onPlaceBet={addBet} 
               balance={gameState.balance} 
@@ -325,42 +316,65 @@ const RouletteGame = () => {
             />
           </div>
           
-          <div className="space-y-6">
+          {/* Sidebar */}
+          <div className="lg:col-span-4 space-y-6">
+            {/* Active Bets */}
             <ActiveBets 
               bets={gameState.currentBets} 
               removeBet={removeBet}
               isSpinning={gameState.isSpinning}
             />
             
-            <div className="flex justify-center mb-4">
+            {/* Spin Button */}
+            <div className="flex justify-center">
               <button
                 onClick={startSpin}
                 disabled={gameState.isSpinning || gameState.currentBets.length === 0}
                 className={`
-                  px-8 py-3 rounded-full text-lg font-bold
+                  w-full max-w-xs py-5 rounded-2xl text-xl font-bold uppercase tracking-wider
+                  transition-all duration-300 
                   ${gameState.isSpinning || gameState.currentBets.length === 0 
-                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed' 
-                    : 'bg-green-600 hover:bg-green-500 text-white'}
-                  transition-colors
+                    ? 'bg-gradient-to-br from-gray-700 to-gray-800 text-gray-500 cursor-not-allowed' 
+                    : 'bg-gradient-to-r from-[#f4d03f] via-[#d4af37] to-[#b8860b] text-black hover:shadow-[0_0_40px_rgba(212,175,55,0.5)] hover:scale-105 active:scale-100'}
+                  shadow-xl
                 `}
               >
                 {gameState.isSpinning ? (
-                  <span className="flex items-center">
-                    <LoadingSpinner size="sm" className="mr-2" />
+                  <span className="flex items-center justify-center gap-3">
+                    <LoadingSpinner size="sm" />
                     Spinning...
                   </span>
-                ) : 'Spin'}
+                ) : (
+                  <>
+                    <span className="block">Spin</span>
+                    {totalBetAmount > 0 && (
+                      <span className="text-sm font-normal opacity-75 mt-1 block">
+                        Total Bet: {totalBetAmount}
+                      </span>
+                    )}
+                  </>
+                )}
               </button>
             </div>
             
+            {/* Bet History */}
             <BetHistory 
               history={gameState.betHistory}
             />
           </div>
         </div>
-      </div>
+      </main>
+      
+      {/* Footer */}
+      <footer className="border-t border-[rgba(212,175,55,0.1)] mt-12 py-6">
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <p className="text-gray-500 text-sm">
+            Play responsibly • For entertainment purposes only
+          </p>
+        </div>
+      </footer>
     </div>
   );
 };
 
-export default RouletteGame; 
+export default RouletteGame;

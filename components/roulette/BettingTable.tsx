@@ -3,7 +3,7 @@
 import { memo, useState } from 'react';
 import { Bet, BetType } from '@/lib/types';
 import { generateBetId } from '@/lib/gameUtils';
-import { WHEEL_NUMBERS } from './RouletteWheel'; // Import wheel numbers for color consistency
+import { WHEEL_NUMBERS } from './RouletteWheel';
 
 type BettingTableProps = {
   onPlaceBet: (bet: Bet) => void;
@@ -21,12 +21,6 @@ const BettingTable = ({
   const [betAmount, setBetAmount] = useState<number>(10);
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null);
 
-  // Find a number's color from the WHEEL_NUMBERS array
-  const getNumberColor = (num: number | string): 'black' | 'white' => {
-    const position = WHEEL_NUMBERS.find(pos => pos.number === num);
-    return position?.color === 'black' ? 'black' : 'white';
-  };
-
   const handlePlaceBet = (type: BetType, targetNumber?: number) => {
     if (betAmount <= 0 || betAmount > balance || isSpinning) return;
     
@@ -40,53 +34,58 @@ const BettingTable = ({
     onPlaceBet(bet);
   };
 
-  // Handle number selection
   const handleNumberSelect = (number: number) => {
     setSelectedNumber(number);
     handlePlaceBet('number', number);
   };
   
-  // Handle bet type selection
   const handleBetTypeSelect = (type: BetType) => {
     handlePlaceBet(type);
   };
   
-  // Handle bet amount change
   const handleBetChange = (amount: number) => {
     setBetAmount(amount);
   };
   
-  // All-in feature
   const handleAllIn = () => {
     setBetAmount(balance);
   };
 
-  // Bet amount buttons
-  const presetAmounts = [10, 50, 100, 500, 1000].filter(amount => amount <= balance);
+  // Chip configurations with colors and styles
+  const chipConfigs = [
+    { amount: 10, bg: 'from-yellow-400 to-yellow-600', text: 'text-black', label: '10' },
+    { amount: 50, bg: 'from-slate-400 to-slate-600', text: 'text-white', label: '50' },
+    { amount: 100, bg: 'from-blue-500 to-blue-700', text: 'text-white', label: '100' },
+    { amount: 500, bg: 'from-emerald-500 to-emerald-700', text: 'text-white', label: '500' },
+    { amount: 1000, bg: 'from-purple-500 to-purple-800', text: 'text-white', label: '1K' },
+  ];
+  
+  const availableChips = chipConfigs.filter(chip => chip.amount <= balance);
   
   return (
-    <div className={`${className} bg-pink-300 rounded-lg p-4 shadow-lg`}>
-      <div className="mb-4">
-        <h3 className="text-black text-lg font-bold mb-2">Bet Amount</h3>
+    <div className={`${className} casino-felt rounded-2xl p-6 shadow-2xl`}>
+      {/* Chip Selection */}
+      <div className="mb-6">
+        <h3 className="text-white text-sm font-semibold mb-4 uppercase tracking-wider flex items-center gap-2 opacity-90">
+          <span className="w-2 h-2 rounded-full bg-gradient-to-br from-[#d4af37] to-[#b8860b]"></span>
+          Select Chip Value
+        </h3>
         
-        <div className="flex flex-wrap gap-2 mb-2">
-          {presetAmounts.map(amount => (
+        <div className="flex flex-wrap gap-3 items-center">
+          {availableChips.map(chip => (
             <button
-              key={`amount-${amount}`}
-              onClick={() => handleBetChange(amount)}
+              key={`chip-${chip.amount}`}
+              onClick={() => handleBetChange(chip.amount)}
               disabled={isSpinning}
               className={`
-                px-4 py-2 rounded-full font-bold 
-                ${betAmount === amount ? 'ring-2 ring-yellow-400' : ''}
-                ${amount === 10 ? 'bg-yellow-400 text-black' : 
-                  amount === 50 ? 'bg-gray-600 text-white' : 
-                  amount === 100 ? 'bg-blue-500 text-white' : 
-                  amount === 500 ? 'bg-green-700 text-white' : 
-                  'bg-purple-800 text-white'}
-                ${isSpinning ? 'opacity-50 cursor-not-allowed' : ''}
+                chip w-14 h-14 rounded-full font-bold transition-all duration-200
+                bg-gradient-to-br ${chip.bg} ${chip.text}
+                flex items-center justify-center text-sm
+                ${betAmount === chip.amount ? 'ring-3 ring-white ring-offset-2 ring-offset-[#155939] scale-110' : ''}
+                ${isSpinning ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110'}
               `}
             >
-              {amount}
+              {chip.label}
             </button>
           ))}
           
@@ -94,109 +93,196 @@ const BettingTable = ({
             onClick={handleAllIn}
             disabled={isSpinning || balance <= 0}
             className={`
-              px-4 py-2 rounded-full font-bold bg-red-600 text-white
-              ${isSpinning ? 'opacity-50 cursor-not-allowed' : ''}
+              chip w-14 h-14 rounded-full font-bold
+              bg-gradient-to-br from-red-500 to-red-700 text-white
+              flex flex-col items-center justify-center text-xs leading-tight
+              ${isSpinning ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110'}
+              transition-all duration-200
             `}
           >
-            All-in
+            <span>ALL</span>
+            <span>IN</span>
           </button>
         </div>
         
-        <div className="text-black text-sm">
-          Current bet: <span className="font-bold text-purple-800">{betAmount}</span>
+        <div className="mt-4 flex items-center gap-2">
+          <span className="text-white/60 text-sm">Selected:</span>
+          <span className="font-bold text-[#d4af37] text-lg">{betAmount}</span>
+          <span className="text-white/60 text-sm">chips</span>
         </div>
       </div>
       
-      {/* Color bets */}
-      <div className="grid grid-cols-2 gap-2 mb-4">
-        <button
-          onClick={() => handleBetTypeSelect('black')}
-          disabled={isSpinning || betAmount > balance}
-          className="bg-black text-white py-2 px-4 rounded-md font-bold hover:bg-opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Black (1.9x)
-        </button>
+      {/* Bet Types Grid */}
+      <div className="space-y-4 mb-6">
+        {/* Color Bets */}
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => handleBetTypeSelect('black')}
+            disabled={isSpinning || betAmount > balance}
+            className={`
+              relative overflow-hidden py-4 px-5 rounded-xl font-bold text-white
+              bg-gradient-to-br from-gray-800 via-gray-900 to-black
+              border border-[#d4af37]/30
+              transition-all duration-200
+              ${isSpinning || betAmount > balance ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.02] hover:border-[#d4af37]/60 hover:shadow-lg'}
+            `}
+          >
+            <span className="relative z-10 flex flex-col items-center gap-1">
+              <span className="text-lg">⚫ Black</span>
+              <span className="text-xs text-gray-400">1.9x Payout</span>
+            </span>
+          </button>
+          
+          <button
+            onClick={() => handleBetTypeSelect('white')}
+            disabled={isSpinning || betAmount > balance}
+            className={`
+              relative overflow-hidden py-4 px-5 rounded-xl font-bold text-gray-900
+              bg-gradient-to-br from-white via-gray-100 to-gray-200
+              border border-[#d4af37]/30
+              transition-all duration-200
+              ${isSpinning || betAmount > balance ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.02] hover:border-[#d4af37]/60 hover:shadow-lg'}
+            `}
+          >
+            <span className="relative z-10 flex flex-col items-center gap-1">
+              <span className="text-lg">⚪ White</span>
+              <span className="text-xs text-gray-500">1.9x Payout</span>
+            </span>
+          </button>
+        </div>
         
-        <button
-          onClick={() => handleBetTypeSelect('white')}
-          disabled={isSpinning || betAmount > balance}
-          className="bg-white text-black py-2 px-4 rounded-md font-bold hover:bg-opacity-80 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-300"
-        >
-          White (1.9x)
-        </button>
+        {/* Even/Odd Bets */}
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => handleBetTypeSelect('even')}
+            disabled={isSpinning || betAmount > balance}
+            className={`
+              py-4 px-5 rounded-xl font-bold text-gray-900
+              bg-gradient-to-br from-white via-gray-100 to-gray-200
+              border border-[#d4af37]/30
+              transition-all duration-200
+              ${isSpinning || betAmount > balance ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.02] hover:border-[#d4af37]/60 hover:shadow-lg'}
+            `}
+          >
+            <span className="flex flex-col items-center gap-1">
+              <span className="text-lg">Even</span>
+              <span className="text-xs text-gray-500">1.8x Payout</span>
+            </span>
+          </button>
+          
+          <button
+            onClick={() => handleBetTypeSelect('odd')}
+            disabled={isSpinning || betAmount > balance}
+            className={`
+              py-4 px-5 rounded-xl font-bold text-white
+              bg-gradient-to-br from-gray-800 via-gray-900 to-black
+              border border-[#d4af37]/30
+              transition-all duration-200
+              ${isSpinning || betAmount > balance ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.02] hover:border-[#d4af37]/60 hover:shadow-lg'}
+            `}
+          >
+            <span className="flex flex-col items-center gap-1">
+              <span className="text-lg">Odd</span>
+              <span className="text-xs text-gray-400">1.8x Payout</span>
+            </span>
+          </button>
+        </div>
+        
+        {/* Special Bets */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <button
+            onClick={() => handleBetTypeSelect('green')}
+            disabled={isSpinning || betAmount > balance}
+            className={`
+              py-4 px-3 rounded-xl font-bold text-white
+              bg-gradient-to-br from-emerald-400 to-emerald-600
+              border border-emerald-300/30
+              transition-all duration-200
+              ${isSpinning || betAmount > balance ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.02] hover:shadow-lg hover:shadow-emerald-500/20'}
+            `}
+          >
+            <span className="flex flex-col items-center gap-1">
+              <span>🟢 Green</span>
+              <span className="text-xs opacity-80">6.5x</span>
+            </span>
+          </button>
+          
+          <button
+            onClick={() => handleBetTypeSelect('pink')}
+            disabled={isSpinning || betAmount > balance}
+            className={`
+              py-4 px-3 rounded-xl font-bold text-white
+              bg-gradient-to-br from-pink-400 to-pink-600
+              border border-pink-300/30
+              transition-all duration-200
+              ${isSpinning || betAmount > balance ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.02] hover:shadow-lg hover:shadow-pink-500/20'}
+            `}
+          >
+            <span className="flex flex-col items-center gap-1">
+              <span>🩷 Pink</span>
+              <span className="text-xs opacity-80">6.5x</span>
+            </span>
+          </button>
+          
+          <button
+            onClick={() => handleBetTypeSelect('gold')}
+            disabled={isSpinning || betAmount > balance}
+            className={`
+              py-4 px-3 rounded-xl font-bold text-black
+              bg-gradient-to-br from-[#f4d03f] via-[#d4af37] to-[#b8860b]
+              border border-[#f4d03f]/50
+              transition-all duration-200
+              ${isSpinning || betAmount > balance ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.02] hover:shadow-lg hover:shadow-yellow-500/30'}
+            `}
+          >
+            <span className="flex flex-col items-center gap-1">
+              <span>🌟 Gold</span>
+              <span className="text-xs opacity-70">50-200x</span>
+            </span>
+          </button>
+          
+          <button
+            onClick={() => handleBetTypeSelect('x')}
+            disabled={isSpinning || betAmount > balance}
+            className={`
+              py-4 px-3 rounded-xl font-bold text-white
+              bg-gradient-to-br from-violet-500 to-purple-800
+              border border-violet-400/30
+              transition-all duration-200
+              ${isSpinning || betAmount > balance ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.02] hover:shadow-lg hover:shadow-violet-500/20'}
+            `}
+          >
+            <span className="flex flex-col items-center gap-1">
+              <span>✖ X</span>
+              <span className="text-xs opacity-80">1.0x</span>
+            </span>
+          </button>
+        </div>
       </div>
       
-      {/* Even/Odd bets */}
-      <div className="grid grid-cols-2 gap-2 mb-4">
-        <button
-          onClick={() => handleBetTypeSelect('even')}
-          disabled={isSpinning || betAmount > balance}
-          className="bg-white text-black py-2 px-4 rounded-md font-bold hover:bg-opacity-80 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-300"
-        >
-          Even (1.8x)
-        </button>
+      {/* Numbers Grid */}
+      <div className="mt-6">
+        <h3 className="text-white text-sm font-semibold mb-4 uppercase tracking-wider flex items-center gap-2 opacity-90">
+          <span className="w-2 h-2 rounded-full bg-gradient-to-br from-[#d4af37] to-[#b8860b]"></span>
+          Bet on Number
+          <span className="ml-auto text-xs font-normal text-[#d4af37]">30x Payout</span>
+        </h3>
         
-        <button
-          onClick={() => handleBetTypeSelect('odd')}
-          disabled={isSpinning || betAmount > balance}
-          className="bg-black text-white py-2 px-4 rounded-md font-bold hover:bg-opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Odd (1.8x)
-        </button>
-      </div>
-      
-      {/* Special bets */}
-      <div className="grid grid-cols-2 gap-2 mb-4">
-        <button
-          onClick={() => handleBetTypeSelect('green')}
-          disabled={isSpinning || betAmount > balance}
-          className="bg-green-500 text-white py-2 px-4 rounded-md font-bold hover:bg-opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Green (6.5x)
-        </button>
-        
-        <button
-          onClick={() => handleBetTypeSelect('pink')}
-          disabled={isSpinning || betAmount > balance}
-          className="bg-pink-500 text-white py-2 px-4 rounded-md font-bold hover:bg-opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Pink (6.5x)
-        </button>
-        
-        <button
-          onClick={() => handleBetTypeSelect('gold')}
-          disabled={isSpinning || betAmount > balance}
-          className="bg-yellow-500 text-black py-2 px-4 rounded-md font-bold hover:bg-opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Gold (50-200x)
-        </button>
-        
-        <button
-          onClick={() => handleBetTypeSelect('x')}
-          disabled={isSpinning || betAmount > balance}
-          className="bg-black text-white py-2 px-4 rounded-md font-bold hover:bg-opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          X (1.0x)
-        </button>
-      </div>
-      
-      {/* Numbers grid */}
-      <div className="mt-4">
-        <h3 className="text-black text-lg font-bold mb-2">Numbers (30x)</h3>
-        <div className="grid grid-cols-10 gap-2 mb-2">
-          {/* Create number buttons in the same order as they appear in WHEEL_NUMBERS */}
+        <div className="grid grid-cols-10 gap-1.5">
           {WHEEL_NUMBERS.map((position, index) => {
-            // Skip the X position as it's handled separately
             if (position.number === 'X') {
               return (
                 <button
-                  key="x-button"
+                  key="x-number-btn"
                   onClick={() => handleBetTypeSelect('x')}
                   disabled={isSpinning || betAmount > balance}
                   className={`
-                    w-10 h-10 rounded-full font-bold bg-black text-white 
-                    flex items-center justify-center border border-gray-700
-                    ${isSpinning ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80'}
+                    number-btn aspect-square rounded-lg font-bold
+                    bg-gradient-to-br from-violet-500 to-purple-800 text-white 
+                    flex items-center justify-center text-sm
+                    border border-violet-400/40
+                    ${isSpinning || betAmount > balance ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110 hover:shadow-lg hover:z-10'}
+                    transition-all duration-200
                   `}
                 >
                   X
@@ -204,11 +290,9 @@ const BettingTable = ({
               );
             }
             
-            // Regular number buttons
             const number = position.number as number;
             const color = position.color;
-            const bgColor = color === 'black' ? 'bg-black' : 'bg-white';
-            const textColor = color === 'black' ? 'text-white' : 'text-black';
+            const isBlack = color === 'black';
             
             return (
               <button
@@ -216,11 +300,13 @@ const BettingTable = ({
                 onClick={() => handleNumberSelect(number)}
                 disabled={isSpinning || betAmount > balance}
                 className={`
-                  w-10 h-10 rounded-full font-bold flex items-center justify-center
-                  ${bgColor} ${textColor}
-                  ${selectedNumber === number ? 'ring-2 ring-yellow-300' : ''}
-                  ${isSpinning ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80'}
-                  border border-gray-700
+                  number-btn aspect-square rounded-lg font-bold flex items-center justify-center text-sm
+                  ${isBlack 
+                    ? 'bg-gradient-to-br from-gray-700 to-black text-white' 
+                    : 'bg-gradient-to-br from-white to-gray-200 text-gray-900'}
+                  ${selectedNumber === number ? 'ring-2 ring-[#d4af37] ring-offset-1 ring-offset-[#155939]' : ''}
+                  ${isSpinning || betAmount > balance ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110 hover:shadow-lg hover:z-10'}
+                  border border-[#d4af37]/30 transition-all duration-200
                 `}
               >
                 {number}
@@ -233,4 +319,4 @@ const BettingTable = ({
   );
 };
 
-export default memo(BettingTable); 
+export default memo(BettingTable);

@@ -94,19 +94,25 @@ const ActiveBets = ({
   
   if (bets.length === 0) {
     return (
-      <div className={`${className} bg-blue-900 rounded-lg p-4 text-center`}>
-        <h3 className="text-lg font-bold text-white mb-2">Active Bets</h3>
-        <p className="text-gray-300">No active bets</p>
+      <div className={`${className} glass-card p-5 text-center`}>
+        <h3 className="text-lg font-bold text-white mb-3 flex items-center justify-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-gradient-to-br from-[#d4af37] to-[#b8860b]"></span>
+          Active Bets
+        </h3>
+        <p className="text-gray-400">No active bets</p>
       </div>
     );
   }
   
   return (
-    <div className={`${className} bg-blue-900 rounded-lg p-4`}>
+    <div className={`${className} glass-card p-5`}>
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-bold text-white">Active Bets</h3>
+        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-gradient-to-br from-[#d4af37] to-[#b8860b]"></span>
+          Active Bets
+        </h3>
         <div className="text-white">
-          Total: <span className="font-bold text-yellow-400">{formatNumber(totalAmount)}</span>
+          Total: <span className="font-bold text-[#d4af37]">{formatNumber(totalAmount)}</span>
         </div>
       </div>
       
@@ -128,21 +134,21 @@ const ActiveBets = ({
           return (
             <div 
               key={id} 
-              className="bg-blue-800 rounded p-3 flex justify-between items-center"
+              className="bg-black/40 rounded-lg p-3 flex justify-between items-center border border-[#d4af37]/20 hover:border-[#d4af37]/40 transition-colors"
             >
               <div className="flex items-center">
-                <div className={`w-3 h-3 rounded-full mr-2 ${indicatorColor}`}></div>
+                <div className={`w-3 h-3 rounded-full mr-3 ${indicatorColor} shadow-sm`}></div>
                 <div>
                   <div className="text-white font-semibold">{betTitle}</div>
-                  <div className="text-sm text-gray-300">
+                  <div className="text-sm text-gray-400">
                     {bets.filter(b => b.id === id).length} bet
                   </div>
                 </div>
               </div>
               
               <div>
-                <div className="text-white text-right">{amount}</div>
-                <div className="text-xs text-yellow-400 text-right">
+                <div className="text-white text-right font-medium">{amount}</div>
+                <div className="text-xs text-[#d4af37] text-right">
                   Win: {formatNumber(potentialWin)}
                 </div>
               </div>
@@ -151,7 +157,7 @@ const ActiveBets = ({
               {handleRemoveBet && !isSpinning && (
                 <button 
                   onClick={() => handleRemoveBet(id)}
-                  className="ml-2 text-red-400 hover:text-red-300"
+                  className="ml-3 w-6 h-6 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/40 hover:text-red-300 flex items-center justify-center transition-colors"
                   aria-label="Remove bet"
                 >
                   ✕

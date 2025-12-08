@@ -71,20 +71,26 @@ const BetHistory = ({ history, className = '' }: BetHistoryProps) => {
   
   if (history.length === 0) {
     return (
-      <div className={`${className} bg-blue-900 rounded-lg p-4 text-center`}>
-        <h3 className="text-lg font-bold text-white mb-2">History</h3>
-        <p className="text-gray-300">No betting history yet</p>
+      <div className={`${className} glass-card p-5 text-center`}>
+        <h3 className="text-lg font-bold text-white mb-3 flex items-center justify-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-gradient-to-br from-[#d4af37] to-[#b8860b]"></span>
+          History
+        </h3>
+        <p className="text-gray-400">No betting history yet</p>
       </div>
     );
   }
   
   return (
-    <div className={`${className} bg-blue-900 rounded-lg p-4`}>
-      <h3 className="text-lg font-bold text-white mb-4">Bet History</h3>
+    <div className={`${className} glass-card p-5`}>
+      <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+        <span className="w-2 h-2 rounded-full bg-gradient-to-br from-[#d4af37] to-[#b8860b]"></span>
+        Bet History
+      </h3>
       
-      <div className="space-y-2 max-h-64 overflow-y-auto">
+      <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
         {history.map(item => (
-          <div key={item.id} className="bg-blue-800 rounded p-3 flex items-center justify-between">
+          <div key={item.id} className="bg-black/40 rounded-lg p-3 flex items-center justify-between border border-[#d4af37]/20">
             <div className="flex items-center">
               {/* Bet type indicator */}
               <div className={`w-3 h-3 rounded-full mr-2 ${
@@ -96,9 +102,9 @@ const BetHistory = ({ history, className = '' }: BetHistoryProps) => {
               <div>
                 <div className="text-white font-semibold flex items-center">
                   {getBetTitle(item)}
-                  <span className="text-xs text-gray-400 ml-2">{formatTime(item.timestamp)}</span>
+                  <span className="text-xs text-gray-500 ml-2">{formatTime(item.timestamp)}</span>
                 </div>
-                <div className="text-sm text-gray-300">
+                <div className="text-sm text-gray-400">
                   Bet: {formatNumber(item.amount)}
                 </div>
               </div>
