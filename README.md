@@ -1,5 +1,7 @@
 # Roulette Game
 DEMO: https://68dfb2f814489b38a5c1a0cc--startling-mousse-9dfd56.netlify.app/
+PREVIEW: https://roulette-game-custom-5jl828u0f-imstudent02s-projects.vercel.app/
+(This DEMO or PREVIEW are under construction this is not final product)
 
 A web-based roulette game with unique rules, additional wheel mechanics, and virtual currency.
 
@@ -80,6 +82,8 @@ If a bet on Gold exceeds 1000 units, two balls will roll together, resulting in 
 ### Cheat Code
 
 Enter the code "@mrmoney" in the cheat code input box to receive 5,000 chips.
+
+Open-source contributions are welcome! Even the smallest help will be acknowledged in the final release.
 
 ## License
 
