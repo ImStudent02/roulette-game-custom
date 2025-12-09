@@ -199,13 +199,16 @@ export const isBetWinner = (
       isWinner = typeof num === 'number' && num % 2 === 1;
       break;
     case 'green':
-      isWinner = position.color === 'green';
+      // Check outer color ring (not inner wheel color)
+      isWinner = (position as any).outerColor === 'green';
       break;
     case 'pink':
-      isWinner = position.color === 'pink';
+      // Check outer color ring (not inner wheel color)
+      isWinner = (position as any).outerColor === 'pink';
       break;
     case 'gold':
-      isWinner = position.color === 'gold';
+      // Check outer color ring (not inner wheel color)
+      isWinner = (position as any).outerColor === 'gold';
       break;
     case 'x':
       isWinner = num === 'X';

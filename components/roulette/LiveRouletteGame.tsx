@@ -366,7 +366,6 @@ const LiveRouletteGame = () => {
               onSpinComplete={handleSpinComplete}
               isSpinning={gameState.isSpinning}
               winningPosition={phase === 'result' ? (serverWinningPosition || gameState.winningPosition) : undefined}
-              spinTwice={false}
               forceWinningIndex={gameState.isSpinning ? winningIndex : undefined}
               shouldRegenerateColors={shouldRegenerateGold}
             />
