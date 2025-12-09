@@ -17,6 +17,9 @@ type RouletteWheelProps = {
   secondWinningPosition?: WheelPosition;
   spinTwice?: boolean;
   className?: string;
+  forceWinningIndex?: number; // Server-controlled winning index
+  shouldRegenerateColors?: boolean; // Trigger to regenerate gold position
+  serverOuterColors?: string[]; // Server-provided outer colors for sync
 };
 
 const createFixedWheelLayout = (): WheelPosition[] => {
@@ -97,6 +100,9 @@ const RouletteWheel = ({
   secondWinningPosition,
   spinTwice = false,
   className = '',
+  forceWinningIndex,
+  shouldRegenerateColors = false,
+  serverOuterColors,
 }: RouletteWheelProps) => {
   const wheelRef = useRef<HTMLDivElement>(null);
   const additionalWheelRef = useRef<HTMLDivElement>(null);
@@ -117,16 +123,46 @@ const RouletteWheel = ({
   
   const winPositionRef = useRef<WheelPosition | null>(null);
   const secondWinPositionRef = useRef<WheelPosition | null>(null);
+  const prevColorsRef = useRef<string[] | null>(null); // Track previous colors to avoid unnecessary resets
 
   // Responsive wheel size - will be controlled via CSS
   const wheelSize = 420;
   
-  // Generate random colors on client-side only to avoid hydration mismatch
+  // Use server-provided colors if available - only update when colors actually change
   useEffect(() => {
-    setOuterColors(generateOuterColors());
+    if (serverOuterColors && serverOuterColors.length === 51) {
+      // Check if colors actually changed (not just same array reference)
+      const colorsChanged = !prevColorsRef.current || 
+        prevColorsRef.current.join(',') !== serverOuterColors.join(',');
+      
+      if (colorsChanged) {
+        setOuterColors(serverOuterColors as OuterColor[]);
+        prevColorsRef.current = serverOuterColors;
+      }
+    } else if (!prevColorsRef.current) {
+      // Only generate local colors on first mount
+      setOuterColors(generateOuterColors());
+    }
     setAdditionalWheel(generateAdditionalWheel());
     setIsMounted(true);
-  }, []);
+  }, [serverOuterColors]);
+  
+  // Reset wheel position when new round starts (shouldRegenerateColors triggers on betting phase start)
+  useEffect(() => {
+    if (shouldRegenerateColors && isMounted) {
+      // Reset rotation to 0 for sync - all clients start from same position
+      setWheelRotation(0);
+      setAdditionalWheelRotation(0);
+      if (wheelRef.current) {
+        wheelRef.current.style.transition = 'none';
+        wheelRef.current.style.transform = 'rotate(0deg)';
+      }
+      // If not using server colors, generate new local colors
+      if (!serverOuterColors || serverOuterColors.length !== 51) {
+        setOuterColors(generateOuterColors());
+      }
+    }
+  }, [shouldRegenerateColors, isMounted, serverOuterColors]);
   
   // Get the gold position index
   const goldIndex = useMemo(() => outerColors.findIndex(c => c === 'gold'), [outerColors]);
@@ -199,8 +235,10 @@ const RouletteWheel = ({
         activeSpinTimeoutRef.current = null;
       }
       
-      // Regenerate outer colors for each new spin (gold position changes)
-      setOuterColors(generateOuterColors());
+      // Only regenerate colors if NOT using server-provided colors
+      if (!serverOuterColors || serverOuterColors.length !== 51) {
+        setOuterColors(generateOuterColors());
+      }
       
       setActiveSpin(true);
       setIsResultPhase(false);
@@ -210,7 +248,10 @@ const RouletteWheel = ({
         slowSpinIntervalRef.current = null;
       }
       
-      const randomIndex = Math.floor(Math.random() * WHEEL_NUMBERS.length);
+      // Use force winning index if provided (server mode), otherwise random
+      const randomIndex = forceWinningIndex !== undefined && forceWinningIndex >= 0 
+        ? forceWinningIndex 
+        : Math.floor(Math.random() * WHEEL_NUMBERS.length);
       const winPosition = WHEEL_NUMBERS[randomIndex];
       
       winPositionRef.current = winPosition;
@@ -219,9 +260,12 @@ const RouletteWheel = ({
       const segmentCenterAngle = (randomIndex + 0.5) * ANGLE_PER_SLOT;
       const targetAngle = 360 - segmentCenterAngle;
       
-      const rotations = HyperParams.ANIMATION.minRotations + 
-        Math.floor(Math.random() * (HyperParams.ANIMATION.maxRotations - HyperParams.ANIMATION.minRotations));
-      const newRotation = (wheelRotation - (wheelRotation % 360)) + rotations * 360 + targetAngle;
+      // FIXED rotation count for sync - all clients use same value
+      const fixedRotations = 12; // Fixed for sync purposes
+      const newRotation = fixedRotations * 360 + targetAngle;
+      
+      // Set wheel rotation state for tracking
+      setWheelRotation(newRotation);
       
       if (wheelRef.current) {
         wheelRef.current.style.transition = `transform ${HyperParams.ANIMATION.spinDuration}ms cubic-bezier(0.2, 0.8, 0.3, 0.9)`;
@@ -236,7 +280,7 @@ const RouletteWheel = ({
         
         const additionalTargetAngle = additionalRandomIndex * (360 / additionalWheel.length);
         
-        const additionalRotations = rotations - 2 + Math.floor(Math.random() * 4);
+        const additionalRotations = fixedRotations - 2 + Math.floor(Math.random() * 4);
         const newAdditionalRotation = (additionalWheelRotation - (additionalWheelRotation % 360)) + 
           additionalRotations * 360 + additionalTargetAngle;
         

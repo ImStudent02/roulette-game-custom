@@ -1,66 +1,81 @@
 'use client';
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { Bet, GameState, WheelPosition, BetHistoryItem } from '@/lib/types';
-import { isBetWinner, multipliers, generateBetId } from '@/lib/gameUtils';
-import RouletteWheel from './RouletteWheel';
+import { Bet, BetHistoryItem, WheelPosition } from '@/lib/types';
+import { generateBetId } from '@/lib/gameUtils';
+import RouletteWheel from './RouletteWheel'; // Use original wheel with smooth animation
 import BettingTable from './BettingTable';
 import ActiveBets from './ActiveBets';
 import BetHistory from './BetHistory';
 import GameTimer from './GameTimer';
 import LiveChat from './LiveChat';
 import AuthModal from '../ui/AuthModal';
+import { useWebSocket, GameState as ServerGameState } from '@/hooks/useWebSocket';
 
 type GamePhase = 'betting' | 'warning' | 'locked' | 'spinning' | 'result';
 
 // Timer configuration (in seconds) - matches server
 const TIMER_CONFIG = {
-  bettingDuration: 210,
-  warningStart: 180,
-  lockedDuration: 20,
-  spinDuration: 10,
-  resultDuration: 60,
+  bettingDuration: 210,   // 3:30 betting
+  lockedDuration: 15,     // 15s countdown suspense
+  spinDuration: 15,       // 15s wheel spin
+  resultDuration: 60,     // 60s result display
 };
 
-// Initial game state
-const initialState: GameState = {
-  balance: 1000,
-  currentBets: [],
-  isSpinning: false,
-  lastWinnings: 0,
-  history: [],
-  betHistory: [],
-};
+// WebSocket URL - connects to custom server on /ws path (avoids Next.js HMR conflict)
+const WS_URL = typeof window !== 'undefined' 
+  ? `ws://${window.location.hostname}:3001/ws`
+  : 'ws://localhost:3001/ws';
 
-const LiveRouletteGame = () => {
+const LiveRouletteGameV2 = () => {
   // Auth state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<{ email: string; name: string } | null>(null);
+  const [user, setUser] = useState<{ username: string; displayName: string; token?: string } | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  
-  // Game state
-  const [gameState, setGameState] = useState<GameState>(initialState);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Server sync state
-  const [phase, setPhase] = useState<GamePhase>('betting');
-  const [displayTime, setDisplayTime] = useState(210);
-  const [roundNumber, setRoundNumber] = useState(1);
-  const [lastWinningPosition, setLastWinningPosition] = useState<WheelPosition | null>(null);
-  const [serverWinningPosition, setServerWinningPosition] = useState<WheelPosition | null>(null);
-  const [winningIndex, setWinningIndex] = useState(-1);
-  const [shouldRegenerateGold, setShouldRegenerateGold] = useState(false);
+  // Local game state (bets, balance)
+  const [balance, setBalance] = useState(1000);
+  const [currentBets, setCurrentBets] = useState<Bet[]>([]);
+  const [betHistory, setBetHistory] = useState<BetHistoryItem[]>([]);
+  const [lastWinnings, setLastWinnings] = useState(0);
   
-  // Track if we've already triggered spin for current round
-  const hasTriggeredSpinRef = useRef(false);
-  const lastRoundRef = useRef(0);
+  // Previous round tracking for result calculation
+  const [lastProcessedRound, setLastProcessedRound] = useState(0);
   
-  // Tab state for betting/chat toggle
+  // Tab state
   const [activeTab, setActiveTab] = useState<'betting' | 'chat'>('betting');
+  
+  // WebSocket connection
+  const {
+    isConnected,
+    gameState,
+    chatMessages,
+    authenticate,
+    placeBet,
+    sendChatMessage,
+    editChatMessage,
+  } = useWebSocket(WS_URL);
+  
+  // Derived state from server
+  const phase = gameState?.phase || 'betting';
+  const displayTime = gameState?.displayTime || 0;
+  const roundNumber = gameState?.roundNumber || 1;
+  const serverGoldPosition = gameState?.goldPosition ?? -1;
+  const serverGoldMultiplier = gameState?.goldMultiplier || 50;
+  const serverOuterColors = gameState?.outerColors || []; // Server-synced colors!
+  const winningIndex = gameState?.winningIndex ?? -1;
+  const winningPosition = gameState?.winningPosition as WheelPosition | undefined;
+  
+  // Track if we need to trigger a spin
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [shouldRegenerateGold, setShouldRegenerateGold] = useState(false);
+  const lastRoundRef = useRef(0);
+  const hasTriggeredSpinRef = useRef(false); // Track if spin was triggered this round
   
   // Check for existing auth on mount
   useEffect(() => {
-    const savedUser = localStorage.getItem('liveRouletteUser');
+    const savedUser = localStorage.getItem('liveRouletteUserV2');
     if (savedUser) {
       try {
         const parsed = JSON.parse(savedUser);
@@ -71,167 +86,100 @@ const LiveRouletteGame = () => {
       }
     }
     
-    // Load saved game state
-    const savedState = localStorage.getItem('liveRouletteState');
-    if (savedState) {
+    // Load saved balance
+    const savedBalance = localStorage.getItem('liveRouletteBalanceV2');
+    if (savedBalance) {
       try {
-        const parsed = JSON.parse(savedState);
-        setGameState(prev => ({
-          ...prev,
-          balance: parsed.balance || prev.balance,
-          betHistory: parsed.betHistory || prev.betHistory,
-        }));
+        setBalance(parseInt(savedBalance, 10));
       } catch {
-        // Invalid stored data
+        // Invalid
       }
     }
     
     setIsLoading(false);
   }, []);
   
-  // Save game state
+  // Authenticate with WebSocket when user logs in
+  useEffect(() => {
+    if (isAuthenticated && user && isConnected) {
+      authenticate(user.username, user.displayName);
+    }
+  }, [isAuthenticated, user, isConnected, authenticate]);
+  
+  // Save balance
   useEffect(() => {
     if (!isLoading) {
-      localStorage.setItem('liveRouletteState', JSON.stringify({
-        balance: gameState.balance,
-        betHistory: gameState.betHistory,
-      }));
+      localStorage.setItem('liveRouletteBalanceV2', balance.toString());
     }
-  }, [gameState.balance, gameState.betHistory, isLoading]);
+  }, [balance, isLoading]);
   
-  // Poll server for game state
+  // Time-based animation control for precise sync
+  // Use local interval to check time precisely (not dependent on server message timing)
   useEffect(() => {
-    if (!isAuthenticated || isLoading) return;
+    if (!gameState || !gameState.roundStartTime) return;
     
-    const fetchGameState = async () => {
-      try {
-        const res = await fetch('/api/live-game', { cache: 'no-store' });
-        if (!res.ok) return;
-        
-        const data = await res.json();
-        
-        setPhase(data.phase);
-        setDisplayTime(data.displayTime);
-        setRoundNumber(data.roundNumber);
-        setWinningIndex(data.winningIndex);
-        
-        // Handle last winning position
-        if (data.lastWinningPosition) {
-          setLastWinningPosition(data.lastWinningPosition);
-        }
-        
-        // Handle current winning position from server
-        if (data.currentWinningPosition) {
-          setServerWinningPosition(data.currentWinningPosition);
-        }
-        
-        // Handle gold regeneration
-        if (data.shouldRegenerateGold) {
-          setShouldRegenerateGold(true);
-          // Reset after a short delay
-          setTimeout(() => setShouldRegenerateGold(false), 500);
-        }
-        
-        // Handle spin trigger - only once per round
-        if (data.phase === 'spinning' && data.roundNumber > lastRoundRef.current) {
-          if (!hasTriggeredSpinRef.current && !gameState.isSpinning) {
-            hasTriggeredSpinRef.current = true;
-            setGameState(prev => ({ ...prev, isSpinning: true }));
-          }
-        }
-        
-        // Reset spin trigger on new round
-        if (data.roundNumber > lastRoundRef.current) {
-          lastRoundRef.current = data.roundNumber;
-          if (data.phase === 'betting') {
-            hasTriggeredSpinRef.current = false;
-          }
-        }
-        
-      } catch (err) {
-        console.error('Failed to fetch game state:', err);
+    const roundStartTime = gameState.roundStartTime;
+    const spinStartTime = roundStartTime + (TIMER_CONFIG.bettingDuration + TIMER_CONFIG.lockedDuration) * 1000;
+    const resultStartTime = spinStartTime + TIMER_CONFIG.spinDuration * 1000;
+    
+    // New round detection - regenerate colors
+    if (roundNumber > lastRoundRef.current) {
+      setShouldRegenerateGold(true);
+      setTimeout(() => setShouldRegenerateGold(false), 100);
+      lastRoundRef.current = roundNumber;
+      hasTriggeredSpinRef.current = false; // Reset for new round
+    }
+    
+    // Local interval for precise phase monitoring
+    const checkPhase = () => {
+      const now = Date.now();
+      const shouldBeSpinning = now >= spinStartTime && now < resultStartTime;
+      
+      // Trigger spin exactly once when spin phase starts
+      if (shouldBeSpinning && !hasTriggeredSpinRef.current) {
+        setIsSpinning(true);
+        hasTriggeredSpinRef.current = true;
+      }
+      
+      // Stop spin exactly when result phase starts
+      if (now >= resultStartTime && hasTriggeredSpinRef.current) {
+        setIsSpinning(false);
       }
     };
     
-    // Initial fetch
-    fetchGameState();
-    
-    // Poll every second
-    const interval = setInterval(fetchGameState, 1000);
+    // Check immediately and then every 100ms
+    checkPhase();
+    const interval = setInterval(checkPhase, 100);
     
     return () => clearInterval(interval);
-  }, [isAuthenticated, isLoading, gameState.isSpinning]);
+  }, [gameState?.roundStartTime, roundNumber]);
   
-  // Handle authentication
-  const handleAuth = useCallback((userData: { email: string; name: string }) => {
-    setUser(userData);
-    setIsAuthenticated(true);
-    setShowAuthModal(false);
-  }, []);
-  
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem('liveRouletteUser');
-    setUser(null);
-    setIsAuthenticated(false);
-  }, []);
-  
-  // Betting is only allowed during betting and warning phases
-  const canBet = phase === 'betting' || phase === 'warning';
-  
-  // Add bet
-  const addBet = useCallback((bet: Bet) => {
-    if (!canBet) return;
-    
-    setGameState(prev => {
-      if (bet.amount > prev.balance) return prev;
-      
-      return {
-        ...prev,
-        balance: prev.balance - bet.amount,
-        currentBets: [...prev.currentBets, bet],
-      };
-    });
-  }, [canBet]);
-  
-  // Remove bet
-  const removeBet = useCallback((id: string) => {
-    if (!canBet) return;
-    
-    setGameState(prev => {
-      const betToRemove = prev.currentBets.find(bet => bet.id === id);
-      if (!betToRemove) return prev;
-      
-      return {
-        ...prev,
-        balance: prev.balance + betToRemove.amount,
-        currentBets: prev.currentBets.filter(bet => bet.id !== id),
-      };
-    });
-  }, [canBet]);
-  
-  // Handle spin complete - use server's winning position
-  const handleSpinComplete = useCallback((position: WheelPosition, secondPosition?: WheelPosition) => {
-    // Use the server's winning position for consistency
-    const winPosition = serverWinningPosition || position;
-    
-    setGameState(prev => {
+  // Calculate results when round ends
+  useEffect(() => {
+    if (phase === 'result' && roundNumber > lastProcessedRound && winningPosition && currentBets.length > 0) {
+      // Process bets
       let totalWinnings = 0;
       const newBetHistory: BetHistoryItem[] = [];
       
-      prev.currentBets.forEach(bet => {
+      currentBets.forEach(bet => {
+        // Simple win check - match color or number
         let betWon = false;
         let winAmount = 0;
         
-        if (isBetWinner(bet, winPosition)) {
-          let multiplier: number;
-          if (typeof multipliers[bet.type] === 'function') {
-            multiplier = (multipliers[bet.type] as (pos: WheelPosition) => number)(winPosition);
-          } else {
-            multiplier = multipliers[bet.type] as number;
-          }
-          winAmount += bet.amount * multiplier;
-          totalWinnings += winAmount;
+        if (bet.type === 'black' && winningPosition.color === 'black') {
           betWon = true;
+          winAmount = bet.amount * 1.9;
+        } else if (bet.type === 'white' && winningPosition.color === 'white') {
+          betWon = true;
+          winAmount = bet.amount * 1.9;
+        } else if (bet.type === 'number' && bet.targetNumber === winningPosition.number) {
+          betWon = true;
+          winAmount = bet.amount * 30;
+        }
+        // Add more bet type checks as needed
+        
+        if (betWon) {
+          totalWinnings += winAmount;
         }
         
         newBetHistory.push({
@@ -242,28 +190,83 @@ const LiveRouletteGame = () => {
           outcome: betWon ? 'win' : 'loss',
           winAmount: betWon ? winAmount : 0,
           timestamp: new Date(),
-          position: winPosition,
+          position: winningPosition,
         });
       });
       
-      const updatedBetHistory = [...newBetHistory, ...prev.betHistory].slice(0, 20);
-      
-      return {
-        ...prev,
-        balance: prev.balance + totalWinnings,
-        currentBets: [],
-        winningPosition: winPosition,
-        isSpinning: false,
-        lastWinnings: totalWinnings,
-        betHistory: updatedBetHistory,
-      };
+      setBalance(prev => prev + totalWinnings);
+      setLastWinnings(totalWinnings);
+      setBetHistory(prev => [...newBetHistory, ...prev].slice(0, 20));
+      setCurrentBets([]);
+      setLastProcessedRound(roundNumber);
+    }
+  }, [phase, roundNumber, lastProcessedRound, winningPosition, currentBets]);
+  
+  // Handle spin complete
+  const handleSpinComplete = useCallback((position: WheelPosition) => {
+    console.log('Spin complete, winning:', position);
+  }, []);
+  
+  // Clear winnings display on new round
+  useEffect(() => {
+    if (phase === 'betting' && lastWinnings > 0) {
+      // Keep showing for a bit then clear
+      const timeout = setTimeout(() => setLastWinnings(0), 5000);
+      return () => clearTimeout(timeout);
+    }
+  }, [phase, lastWinnings]);
+  
+  // Betting is only allowed during betting and warning phases
+  const canBet = phase === 'betting' || phase === 'warning';
+  
+  // Add bet
+  const addBet = useCallback((bet: Bet) => {
+    if (!canBet) return;
+    if (bet.amount > balance) return;
+    
+    setBalance(prev => prev - bet.amount);
+    setCurrentBets(prev => [...prev, bet]);
+    
+    // Also send to server for global tracking
+    placeBet({ type: bet.type, amount: bet.amount, targetNumber: bet.targetNumber });
+  }, [canBet, balance, placeBet]);
+  
+  // Remove bet
+  const removeBet = useCallback((id: string) => {
+    if (!canBet) return;
+    
+    setCurrentBets(prev => {
+      const bet = prev.find(b => b.id === id);
+      if (bet) {
+        setBalance(b => b + bet.amount);
+      }
+      return prev.filter(b => b.id !== id);
     });
-  }, [serverWinningPosition]);
+  }, [canBet]);
+  
+  // Handle authentication
+  const handleAuth = useCallback((userData: { email: string; name: string }) => {
+    const newUser = {
+      username: `@${userData.name.toLowerCase().replace(/\s+/g, '_')}`,
+      displayName: userData.name,
+    };
+    
+    localStorage.setItem('liveRouletteUserV2', JSON.stringify(newUser));
+    setUser(newUser);
+    setIsAuthenticated(true);
+    setShowAuthModal(false);
+  }, []);
+  
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem('liveRouletteUserV2');
+    setUser(null);
+    setIsAuthenticated(false);
+  }, []);
   
   // Total bet amount
   const totalBetAmount = useMemo(() => {
-    return gameState.currentBets.reduce((sum, bet) => sum + bet.amount, 0);
-  }, [gameState.currentBets]);
+    return currentBets.reduce((sum, bet) => sum + bet.amount, 0);
+  }, [currentBets]);
   
   // Loading state
   if (isLoading) {
@@ -330,8 +333,8 @@ const LiveRouletteGame = () => {
             <div className="flex items-center gap-2 sm:gap-4">
               <h1 className="text-lg sm:text-2xl font-bold title-gradient">LIVE WHEEL</h1>
               <span className="flex items-center gap-1 sm:gap-2 text-[10px] sm:text-xs text-gray-400">
-                <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-green-500 animate-pulse"></span>
-                Round #{roundNumber}
+                <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></span>
+                {isConnected ? `Round #${roundNumber}` : 'Connecting...'}
               </span>
             </div>
             
@@ -339,12 +342,12 @@ const LiveRouletteGame = () => {
               {/* Balance */}
               <div className="glass-card px-2 py-1 sm:px-4 sm:py-2 flex items-center gap-1 sm:gap-2">
                 <span className="text-gray-400 text-[10px] sm:text-sm">Bal:</span>
-                <span className="font-bold text-[#d4af37] text-sm sm:text-base">{gameState.balance.toLocaleString()}</span>
+                <span className="font-bold text-[#d4af37] text-sm sm:text-base">{balance.toLocaleString()}</span>
               </div>
               
               {/* User */}
               <div className="flex items-center gap-1 sm:gap-2">
-                <span className="text-[10px] sm:text-sm text-gray-400 hidden sm:inline">👤 {user?.name}</span>
+                <span className="text-[10px] sm:text-sm text-gray-400 hidden sm:inline">👤 {user?.displayName}</span>
                 <button
                   onClick={handleLogout}
                   className="text-[10px] sm:text-xs text-gray-500 hover:text-red-400 transition-colors"
@@ -359,33 +362,26 @@ const LiveRouletteGame = () => {
       
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-2 sm:px-4 py-4 sm:py-6">
-        {/* Wheel Section */}
+        {/* Wheel Section - CLIENT-SIDE SMOOTH ANIMATION */}
         <section className="mb-4 sm:mb-6">
           <div className="flex justify-center relative">
             <RouletteWheel 
               onSpinComplete={handleSpinComplete}
-              isSpinning={gameState.isSpinning}
-              winningPosition={phase === 'result' ? (serverWinningPosition || gameState.winningPosition) : undefined}
+              isSpinning={isSpinning}
+              winningPosition={phase === 'result' ? winningPosition : undefined}
               spinTwice={false}
-              forceWinningIndex={gameState.isSpinning ? winningIndex : undefined}
+              forceWinningIndex={isSpinning ? winningIndex : undefined}
               shouldRegenerateColors={shouldRegenerateGold}
+              serverOuterColors={serverOuterColors.length === 51 ? serverOuterColors : undefined}
             />
             
-            {/* Last Winner Badge */}
-            {lastWinningPosition && (phase === 'betting' || phase === 'warning' || phase === 'locked') && (
-              <div className="absolute -top-2 left-1/2 -translate-x-1/2 sm:top-2 sm:left-auto sm:right-2 sm:translate-x-0 z-30">
-                <div className="glass-card px-3 py-2 sm:px-4 sm:py-2 flex items-center gap-2 bg-[#08080c]/90">
-                  <span className="text-[10px] sm:text-xs text-gray-400">Last Winner:</span>
-                  <div className={`
-                    w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm
-                    ${lastWinningPosition.color === 'black' 
-                      ? 'bg-black text-white border border-white/30' 
-                      : 'bg-white text-black'}
-                    shadow-lg
-                  `}>
-                    {lastWinningPosition.number}
-                  </div>
-                </div>
+            {/* Gold indicator - show that gold exists but NOT the multiplier (it's a surprise!) */}
+            {serverGoldPosition >= 0 && (
+              <div 
+                className="absolute top-2 right-2 z-30 bg-gradient-to-r from-yellow-400 to-yellow-600 text-black text-xs font-bold px-2 py-1 rounded-full shadow-lg"
+                style={{ boxShadow: '0 0 10px rgba(251, 191, 36, 0.6)' }}
+              >
+                🌟 Gold Active
               </div>
             )}
           </div>
@@ -407,11 +403,11 @@ const LiveRouletteGame = () => {
           />
           
           {/* Winnings display */}
-          {phase === 'result' && gameState.lastWinnings > 0 && (
+          {lastWinnings > 0 && (
             <div className="mt-3 sm:mt-4 glass-card p-3 sm:p-4 bg-green-500/10 border border-green-500/30 text-center">
               <div className="text-xs sm:text-sm text-green-400 mb-1">You Won!</div>
               <div className="text-xl sm:text-3xl font-bold text-green-400">
-                +{gameState.lastWinnings.toLocaleString()}
+                +{lastWinnings.toLocaleString()}
               </div>
             </div>
           )}
@@ -458,7 +454,7 @@ const LiveRouletteGame = () => {
                 
                 <BettingTable 
                   onPlaceBet={addBet}
-                  balance={gameState.balance}
+                  balance={balance}
                   isSpinning={!canBet}
                 />
               </div>
@@ -466,7 +462,7 @@ const LiveRouletteGame = () => {
               {/* Active Bets & History */}
               <div className="lg:col-span-4 space-y-3 sm:space-y-4 order-1 lg:order-2">
                 <ActiveBets 
-                  bets={gameState.currentBets}
+                  bets={currentBets}
                   removeBet={canBet ? removeBet : undefined}
                   isSpinning={!canBet}
                 />
@@ -480,12 +476,18 @@ const LiveRouletteGame = () => {
                   </div>
                 )}
                 
-                <BetHistory history={gameState.betHistory} />
+                <BetHistory history={betHistory} />
               </div>
             </div>
           ) : (
             <div className="max-w-2xl mx-auto">
-              <LiveChat currentUser={user?.name} className="h-[400px] sm:h-[500px]" />
+              <LiveChat 
+                currentUser={user?.displayName} 
+                className="h-[400px] sm:h-[500px]"
+                messages={chatMessages}
+                onSendMessage={sendChatMessage}
+                onEditMessage={editChatMessage}
+              />
             </div>
           )}
         </section>
@@ -504,4 +506,4 @@ const LiveRouletteGame = () => {
   );
 };
 
-export default LiveRouletteGame;
+export default LiveRouletteGameV2;

@@ -105,51 +105,53 @@ const ActiveBets = ({
   }
   
   return (
-    <div className={`${className} glass-card p-5`}>
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+    <div className={`${className} glass-card p-3 sm:p-5`}>
+      <div className="flex justify-between items-center mb-3 sm:mb-4">
+        <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-gradient-to-br from-[#d4af37] to-[#b8860b]"></span>
           Active Bets
         </h3>
-        <div className="text-white">
+        <div className="text-sm sm:text-base text-white">
           Total: <span className="font-bold text-[#d4af37]">{formatNumber(totalAmount)}</span>
         </div>
       </div>
       
-      <div className="space-y-2">
+      <div className="space-y-2 max-h-48 sm:max-h-64 overflow-y-auto">
         {bets.map(bet => {
           const { id, type, amount, targetNumber } = bet;
           const colorClass = getBetTypeColor(type, targetNumber);
           const indicatorColor = getIndicatorDotClass(type, targetNumber);
-          const betTitle = type === 'number' ? `Number ${targetNumber}` : 
+          const betTitle = type === 'number' ? `#${targetNumber}` : 
                            type.charAt(0).toUpperCase() + type.slice(1);
           
-          // Calculate potential win
+          // Calculate potential win - show range for gold (mystery)
           const multiplier = typeof multipliers[type] === 'number' ? 
             multipliers[type] as number : 
             30; // Default for number
-            
+          
+          // For gold bets, show range instead of fixed amount (it's a surprise!)
+          const isGoldBet = type === 'gold';
           const potentialWin = Math.floor(amount * multiplier);
           
           return (
             <div 
               key={id} 
-              className="bg-black/40 rounded-lg p-3 flex justify-between items-center border border-[#d4af37]/20 hover:border-[#d4af37]/40 transition-colors"
+              className="bg-black/40 rounded-lg p-2 sm:p-3 flex justify-between items-center border border-[#d4af37]/20 hover:border-[#d4af37]/40 transition-colors"
             >
-              <div className="flex items-center">
-                <div className={`w-3 h-3 rounded-full mr-3 ${indicatorColor} shadow-sm`}></div>
-                <div>
-                  <div className="text-white font-semibold">{betTitle}</div>
-                  <div className="text-sm text-gray-400">
-                    {bets.filter(b => b.id === id).length} bet
+              <div className="flex items-center min-w-0 flex-1">
+                <div className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full mr-2 sm:mr-3 flex-shrink-0 ${indicatorColor} shadow-sm`}></div>
+                <div className="min-w-0">
+                  <div className="text-sm sm:text-base text-white font-semibold truncate">{betTitle}</div>
+                  <div className="text-xs sm:text-sm text-gray-400">
+                    1 bet
                   </div>
                 </div>
               </div>
               
-              <div>
-                <div className="text-white text-right font-medium">{amount}</div>
-                <div className="text-xs text-[#d4af37] text-right">
-                  Win: {formatNumber(potentialWin)}
+              <div className="flex-shrink-0 ml-2">
+                <div className="text-sm sm:text-base text-white text-right font-medium">{amount}</div>
+                <div className="text-[10px] sm:text-xs text-[#d4af37] text-right">
+                  {isGoldBet ? 'Win: 50x - 200x' : `Win: ${formatNumber(potentialWin)}`}
                 </div>
               </div>
               
@@ -157,7 +159,7 @@ const ActiveBets = ({
               {handleRemoveBet && !isSpinning && (
                 <button 
                   onClick={() => handleRemoveBet(id)}
-                  className="ml-3 w-6 h-6 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/40 hover:text-red-300 flex items-center justify-center transition-colors"
+                  className="ml-2 sm:ml-3 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/40 hover:text-red-300 flex items-center justify-center transition-colors text-xs sm:text-sm"
                   aria-label="Remove bet"
                 >
                   ✕

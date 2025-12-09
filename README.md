@@ -1,4 +1,5 @@
-# Roulette Game
+# Roulette Game Customized
+
 DEMO: https://68dfb2f814489b38a5c1a0cc--startling-mousse-9dfd56.netlify.app/
 
 A web-based roulette game with unique rules, additional wheel mechanics, and virtual currency.
@@ -9,60 +10,52 @@ A web-based roulette game with unique rules, additional wheel mechanics, and vir
 - **Additional Wheel**: Green, Pink, Gold, and Red positions with special rules
 - **Betting Options**: Black/White, Even/Odd, Green/Pink, Gold, X, and specific numbers
 - **Multipliers**: Different multipliers for each bet type
-- **Special Rules**: Double ball for large Gold bets
+- **Gold Mystery**: Gold multiplier is hidden (50x - 200x) until result!
+- **Live Mode**: Real-time multiplayer with synchronized wheel and chat
 - **Virtual Currency**: Starting balance, winnings, and cheat codes
 
-## Performance Optimizations
+## Game Modes
 
-This game is built with performance in mind, especially for low-end devices:
+### Self Mode (`/`)
 
-- Optimized component rendering with React.memo and useCallback
-- Minimal state updates and efficient rendering patterns
-- CSS transitions instead of JavaScript animations for better performance
-- Only necessary UI elements are rendered based on game state
-- Reduced reflows and repaints for smoother gameplay
-- Local storage for game state persistence without a backend
+Single player with button-triggered spin. Great for practice.
 
-## Tech Stack
+### Live Mode (`/live`)
 
-- **Framework**: Next.js with App Router
-- **Styling**: Tailwind CSS
-- **State Management**: React Hooks
-- **Optimization**: TypeScript for better code quality
+Multiplayer with synchronized wheel:
 
-## Development
+- Timer-based rounds (3:30 betting, 15s locked, 15s spin, 60s result)
+- All players see same wheel, same gold position, same result
+- Real-time chat
 
-### Prerequisites
-
-- Node.js 18.18.0 or higher
-
-### Installation
+## Running the Game
 
 ```bash
-# Clone the repository
-git clone <repository-url>
-
-# Navigate to the project
-cd roulette-game
-
 # Install dependencies
 npm install
-```
 
-### Running the Development Server
-
-```bash
+# Self Mode only (standard Next.js)
 npm run dev
+
+# Live Mode (with WebSocket server on port 3001)
+npm run dev:live
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see the game in action.
+## Directory Structure
 
-### Building for Production
-
-```bash
-npm run build
-npm start
 ```
+roulette-game/
+├── app/              # Next.js pages and API routes
+├── components/       # React UI components
+│   ├── roulette/     # Game components (wheel, betting, chat)
+│   └── ui/           # General UI (auth modal)
+├── hooks/            # Custom React hooks (useWebSocket)
+├── lib/              # Utilities, types, auth, database
+├── public/           # Static assets
+└── server.js         # WebSocket server for Live Mode
+```
+
+Each directory has its own `README.md` with detailed documentation.
 
 ## Game Rules
 
@@ -85,7 +78,8 @@ Enter the code "@mrmoney" in the cheat code input box to receive 5,000 chips.
 
 MIT License
 
-Copyright (c) 2050 YC MAYANI.
+![Year](https://img.shields.io/badge/Copyright-©%202025--Present-blue)
+YC MAYANI
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -8,43 +8,80 @@ type ChatMessage = {
   message: string;
   timestamp: Date;
   isSystem?: boolean;
+  isEdited?: boolean;
+  replyToTime?: number;
+};
+
+// WebSocket chat message format
+type WebSocketChatMessage = {
+  username: string;
+  displayName: string;
+  message: string;
+  sentAt: number;
+  editedAt?: number;
+  replyToTime?: number;
 };
 
 type LiveChatProps = {
   currentUser?: string;
   className?: string;
+  // WebSocket-based props (optional for backward compat)
+  messages?: WebSocketChatMessage[];
+  onSendMessage?: (message: string, replyToTime?: number) => void;
+  onEditMessage?: (sentAt: number, message: string) => void;
 };
 
 // Generate random usernames for demo
 const randomUsers = ['Player1', 'LuckyJoe', 'GoldHunter', 'WheelMaster', 'BetKing', 'CasinoFan'];
 
-const LiveChat = ({ currentUser = 'You', className = '' }: LiveChatProps) => {
+const LiveChat = ({ 
+  currentUser = 'You', 
+  className = '',
+  messages: wsMessages,
+  onSendMessage,
+  onEditMessage,
+}: LiveChatProps) => {
   // Initialize as empty to avoid hydration mismatch
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isInitialized, setIsInitialized] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // Initialize messages on client-side only
+  // Use WebSocket messages if available, otherwise use local
+  const hasWsMessages = wsMessages && wsMessages.length > 0;
+  
+  // Convert WebSocket messages to local format
+  const displayMessages: ChatMessage[] = hasWsMessages
+    ? wsMessages.map(m => ({
+        id: m.sentAt.toString(),
+        user: m.displayName || m.username,
+        message: m.message,
+        timestamp: new Date(m.sentAt),
+        isEdited: !!m.editedAt,
+        replyToTime: m.replyToTime,
+      })).reverse()
+    : localMessages;
+  
+  // Initialize local messages on client-side only (fallback mode)
   useEffect(() => {
-    if (!isInitialized) {
-      setMessages([
+    if (!isInitialized && !hasWsMessages) {
+      setLocalMessages([
         { id: '1', user: 'System', message: 'Welcome to LIVE Roulette! 🎰', timestamp: new Date(), isSystem: true },
         { id: '2', user: 'LuckyJoe', message: 'Good luck everyone!', timestamp: new Date() },
         { id: '3', user: 'WheelMaster', message: 'Going all in on black 🖤', timestamp: new Date() },
       ]);
       setIsInitialized(true);
     }
-  }, [isInitialized]);
+  }, [isInitialized, hasWsMessages]);
   
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [displayMessages]);
   
-  // Simulate random chat messages periodically
+  // Simulate random chat messages periodically (only in fallback mode)
   useEffect(() => {
-    if (!isInitialized) return;
+    if (!isInitialized || hasWsMessages) return;
     
     const randomMessages = [
       'Let\'s go! 🎲',
@@ -63,7 +100,7 @@ const LiveChat = ({ currentUser = 'You', className = '' }: LiveChatProps) => {
         const randomUser = randomUsers[Math.floor(Math.random() * randomUsers.length)];
         const randomMessage = randomMessages[Math.floor(Math.random() * randomMessages.length)];
         
-        setMessages(prev => [...prev, {
+        setLocalMessages(prev => [...prev, {
           id: Date.now().toString(),
           user: randomUser,
           message: randomMessage,
@@ -73,17 +110,22 @@ const LiveChat = ({ currentUser = 'You', className = '' }: LiveChatProps) => {
     }, 5000);
     
     return () => clearInterval(interval);
-  }, [isInitialized]);
+  }, [isInitialized, hasWsMessages]);
   
   const handleSend = () => {
     if (!inputValue.trim()) return;
     
-    setMessages(prev => [...prev, {
-      id: Date.now().toString(),
-      user: currentUser,
-      message: inputValue.trim(),
-      timestamp: new Date()
-    }].slice(-50));
+    // Use WebSocket if available, otherwise local
+    if (onSendMessage) {
+      onSendMessage(inputValue.trim());
+    } else {
+      setLocalMessages((prev: ChatMessage[]) => [...prev, {
+        id: Date.now().toString(),
+        user: currentUser,
+        message: inputValue.trim(),
+        timestamp: new Date()
+      }].slice(-50));
+    }
     
     setInputValue('');
   };
@@ -107,14 +149,14 @@ const LiveChat = ({ currentUser = 'You', className = '' }: LiveChatProps) => {
           <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
           Live Chat
           <span className="text-xs text-gray-400 font-normal ml-auto">
-            {messages.length} messages
+            {displayMessages.length} messages
           </span>
         </h3>
       </div>
       
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
-        {messages.map(msg => (
+        {displayMessages.map((msg: ChatMessage) => (
           <div 
             key={msg.id} 
             className={`${msg.isSystem ? 'text-center' : ''}`}
