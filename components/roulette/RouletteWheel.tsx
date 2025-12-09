@@ -103,12 +103,13 @@ const RouletteWheel = ({
   
   const [wheelRotation, setWheelRotation] = useState<number>(0);
   const [additionalWheelRotation, setAdditionalWheelRotation] = useState<number>(0);
-  const [additionalWheel] = useState<WheelPosition[]>(generateAdditionalWheel());
+  const [additionalWheel, setAdditionalWheel] = useState<WheelPosition[]>([]);
   const [activeSpin, setActiveSpin] = useState<boolean>(false);
   const [isResultPhase, setIsResultPhase] = useState<boolean>(false);
+  const [isMounted, setIsMounted] = useState(false);
   
-  // Generate outer colors once per game session, regenerate on each spin
-  const [outerColors, setOuterColors] = useState<OuterColor[]>(() => generateOuterColors());
+  // Initialize as empty to avoid hydration mismatch, generate on client mount
+  const [outerColors, setOuterColors] = useState<OuterColor[]>([]);
   
   const slowSpinIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const activeSpinTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -117,7 +118,15 @@ const RouletteWheel = ({
   const winPositionRef = useRef<WheelPosition | null>(null);
   const secondWinPositionRef = useRef<WheelPosition | null>(null);
 
+  // Responsive wheel size - will be controlled via CSS
   const wheelSize = 420;
+  
+  // Generate random colors on client-side only to avoid hydration mismatch
+  useEffect(() => {
+    setOuterColors(generateOuterColors());
+    setAdditionalWheel(generateAdditionalWheel());
+    setIsMounted(true);
+  }, []);
   
   // Get the gold position index
   const goldIndex = useMemo(() => outerColors.findIndex(c => c === 'gold'), [outerColors]);
@@ -298,7 +307,7 @@ const RouletteWheel = ({
   const textRadius = (mainSegmentOuter + mainSegmentInner) / 2;
   
   return (
-    <div className={`relative mx-auto ${className}`} style={{ maxWidth: wheelSize + 40 }}>
+    <div className={`relative mx-auto ${className} wheel-responsive-container`} style={{ maxWidth: wheelSize + 40, width: '100%' }}>
       {/* Glow effect */}
       <div 
         className="absolute inset-0 rounded-full opacity-50"
@@ -311,17 +320,18 @@ const RouletteWheel = ({
       
       {/* Main wheel container */}
       <div 
-        className="relative mx-auto rounded-full"
+        className="relative mx-auto rounded-full wheel-main"
         style={{ 
-          width: wheelSize, 
-          height: wheelSize,
+          width: '100%',
+          maxWidth: wheelSize,
+          aspectRatio: '1 / 1',
           background: 'linear-gradient(145deg, #2d2010 0%, #1a1208 100%)',
           boxShadow: `
-            0 0 0 10px #b8860b,
-            0 0 0 14px #8b6914,
-            0 0 0 18px rgba(212, 175, 55, 0.3),
-            0 0 60px rgba(0, 0, 0, 0.8),
-            inset 0 0 60px rgba(0, 0, 0, 0.5)
+            0 0 0 clamp(6px, 2vw, 10px) #b8860b,
+            0 0 0 clamp(9px, 2.5vw, 14px) #8b6914,
+            0 0 0 clamp(12px, 3vw, 18px) rgba(212, 175, 55, 0.3),
+            0 0 clamp(30px, 6vw, 60px) rgba(0, 0, 0, 0.8),
+            inset 0 0 clamp(30px, 6vw, 60px) rgba(0, 0, 0, 0.5)
           `
         }}
       >
@@ -549,7 +559,7 @@ const RouletteWheel = ({
       
       {/* Additional wheel for special bets */}
       {spinTwice && (
-        <div className="mt-8 relative w-full max-w-xs mx-auto">
+        <div className="mt-4 sm:mt-8 relative w-full max-w-[200px] sm:max-w-xs mx-auto">
           <div 
             className="relative mx-auto rounded-full overflow-hidden"
             style={{

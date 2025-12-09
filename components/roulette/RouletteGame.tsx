@@ -248,29 +248,39 @@ const RouletteGame = () => {
     <div className="min-h-screen text-white">
       {/* Header */}
       <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#08080c]/80 border-b border-[rgba(212,175,55,0.15)]">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <h1 className="text-3xl md:text-4xl font-bold title-gradient tracking-tight">
-              ROULETTE
-            </h1>
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 py-2 sm:py-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <h1 className="text-xl sm:text-3xl md:text-4xl font-bold title-gradient tracking-tight">
+                ROULETTE
+              </h1>
+              <a 
+                href="/live"
+                className="px-2 py-1 sm:px-4 sm:py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs sm:text-sm font-bold rounded-full hover:shadow-lg hover:shadow-green-500/30 transition-all flex items-center gap-1 sm:gap-2"
+              >
+                <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-white animate-pulse"></span>
+                <span className="hidden xs:inline">LIVE</span>
+                <span className="xs:hidden">🔴</span>
+              </a>
+            </div>
             
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               {/* Balance Display */}
-              <div className="glass-card px-5 py-3 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#f4d03f] to-[#b8860b] flex items-center justify-center">
-                  <span className="text-black font-bold text-sm">$</span>
+              <div className="glass-card px-3 py-2 sm:px-5 sm:py-3 flex items-center gap-2 sm:gap-3">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-[#f4d03f] to-[#b8860b] flex items-center justify-center">
+                  <span className="text-black font-bold text-xs sm:text-sm">$</span>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wider">Balance</p>
-                  <p className="font-bold text-xl text-[#d4af37]">{gameState.balance.toLocaleString()}</p>
+                  <p className="text-[10px] sm:text-xs text-gray-400 uppercase tracking-wider">Balance</p>
+                  <p className="font-bold text-sm sm:text-xl text-[#d4af37]">{gameState.balance.toLocaleString()}</p>
                 </div>
               </div>
               
               {/* Winnings Display */}
               {showingResults && gameState.lastWinnings > 0 && (
-                <div className="glass-card px-5 py-3 winning-glow">
-                  <p className="text-xs text-gray-400 uppercase tracking-wider">Won!</p>
-                  <p className="font-bold text-xl text-[#4ade80]">+{gameState.lastWinnings.toLocaleString()}</p>
+                <div className="glass-card px-3 py-2 sm:px-5 sm:py-3 winning-glow">
+                  <p className="text-[10px] sm:text-xs text-gray-400 uppercase tracking-wider">Won!</p>
+                  <p className="font-bold text-sm sm:text-xl text-[#4ade80]">+{gameState.lastWinnings.toLocaleString()}</p>
                 </div>
               )}
               
@@ -291,9 +301,9 @@ const RouletteGame = () => {
       </header>
       
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-2 sm:px-4 py-4 sm:py-8">
         {/* Wheel Section */}
-        <section className="mb-10">
+        <section className="mb-6 sm:mb-10">
           <div className="flex justify-center">
             <RouletteWheel 
               onSpinComplete={handleSpinComplete} 
@@ -306,9 +316,9 @@ const RouletteGame = () => {
         </section>
         
         {/* Game Controls Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
           {/* Betting Table - Takes most space */}
-          <div className="lg:col-span-8">
+          <div className="lg:col-span-8 order-2 lg:order-1">
             <BettingTable 
               onPlaceBet={addBet} 
               balance={gameState.balance} 
@@ -316,8 +326,8 @@ const RouletteGame = () => {
             />
           </div>
           
-          {/* Sidebar */}
-          <div className="lg:col-span-4 space-y-6">
+          {/* Sidebar - Shows above betting table on mobile */}
+          <div className="lg:col-span-4 space-y-4 sm:space-y-6 order-1 lg:order-2">
             {/* Active Bets */}
             <ActiveBets 
               bets={gameState.currentBets} 
@@ -331,7 +341,7 @@ const RouletteGame = () => {
                 onClick={startSpin}
                 disabled={gameState.isSpinning || gameState.currentBets.length === 0}
                 className={`
-                  w-full max-w-xs py-5 rounded-2xl text-xl font-bold uppercase tracking-wider
+                  w-full max-w-xs py-3 sm:py-5 rounded-xl sm:rounded-2xl text-base sm:text-xl font-bold uppercase tracking-wider
                   transition-all duration-300 
                   ${gameState.isSpinning || gameState.currentBets.length === 0 
                     ? 'bg-gradient-to-br from-gray-700 to-gray-800 text-gray-500 cursor-not-allowed' 
