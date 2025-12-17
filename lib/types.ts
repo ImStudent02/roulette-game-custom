@@ -35,5 +35,4 @@ export type GameState = {
   history: WheelPosition[];
   betHistory: BetHistoryItem[];
   winningPosition?: WheelPosition;
-  secondWinningPosition?: WheelPosition;
 }; 

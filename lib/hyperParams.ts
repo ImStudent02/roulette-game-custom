@@ -25,7 +25,7 @@ export const NUMBER_WEIGHTS = {
 export const SPECIAL_OUTCOME_WEIGHTS = {
   green: 1.2,
   pink: 1.2,
-  gold: 0.5, // Gold is rare
+  gold: 0.4, // Gold is rare
   red: 1.0,
   x: 1.1    // X position
 };
@@ -45,10 +45,10 @@ export const MULTIPLIER_FACTORS = {
 
 // Gold multiplier weights - probability distribution for different multiplier values
 export const GOLD_MULTIPLIER_WEIGHTS = {
-  50: 4,  // 4/10 chance for 50x
-  100: 3, // 3/10 chance for 100x 
-  150: 2, // 2/10 chance for 150x
-  200: 1  // 1/10 chance for 200x
+  50: 50,  // 50/100 chance for 50x
+  100: 30, // 30/100 chance for 100x 
+  150: 15, // 15/100 chance for 150x
+  200: 5   // 5/100 chance for 200x
 };
 
 // Win streak compensation - prevent too many consecutive wins
@@ -68,9 +68,9 @@ export const LOSS_STREAK_COMPENSATION = {
 // Lucky/unlucky number settings
 export const MAGIC_NUMBERS = {
   luckyNumber: 7,          // This number has higher chance of winning
-  luckyNumberBoost: 0.2,   // 20% boost to probability
+  luckyNumberBoost: 0.1,   // 10% boost to probability
   unluckyNumber: 13,       // This number has lower chance of winning
-  unluckyNumberPenalty: 0.1 // 10% reduction in probability
+  unluckyNumberPenalty: 0.05 // 5% reduction in probability
 };
 
 // Wheel generation parameters
@@ -83,7 +83,7 @@ export const WHEEL_GENERATION = {
 // Animation and visual parameters
 export const ANIMATION = {
   idleSpinSpeed: 0.2,       // Speed of continuous slow rotation (degrees per frame)
-  spinDuration: 5000,       // Duration of spin animation in milliseconds
+  spinDuration: 15000,      // Duration of spin animation in milliseconds (matches server 15s spin phase)
   minRotations: 10,         // Minimum number of rotations for a spin
   maxRotations: 15,         // Maximum number of rotations for a spin
   showResultDuration: 3000, // How long to show the result before allowing new spins

@@ -63,7 +63,7 @@ const BettingTable = ({
   const availableChips = chipConfigs.filter(chip => chip.amount <= balance);
   
   return (
-    <div className={`${className} casino-felt rounded-2xl p-6 shadow-2xl`}>
+    <div className={`${className} casino-felt rounded-xl sm:rounded-2xl p-3 sm:p-6 shadow-2xl`}>
       {/* Chip Selection */}
       <div className="mb-6">
         <h3 className="text-white text-sm font-semibold mb-4 uppercase tracking-wider flex items-center gap-2 opacity-90">
@@ -71,17 +71,17 @@ const BettingTable = ({
           Select Chip Value
         </h3>
         
-        <div className="flex flex-wrap gap-3 items-center">
+        <div className="flex flex-wrap gap-2 sm:gap-3 items-center justify-center sm:justify-start">
           {availableChips.map(chip => (
             <button
               key={`chip-${chip.amount}`}
               onClick={() => handleBetChange(chip.amount)}
               disabled={isSpinning}
               className={`
-                chip w-14 h-14 rounded-full font-bold transition-all duration-200
+                chip w-11 h-11 sm:w-14 sm:h-14 rounded-full font-bold transition-all duration-200
                 bg-gradient-to-br ${chip.bg} ${chip.text}
-                flex items-center justify-center text-sm
-                ${betAmount === chip.amount ? 'ring-3 ring-white ring-offset-2 ring-offset-[#155939] scale-110' : ''}
+                flex items-center justify-center text-xs sm:text-sm
+                ${betAmount === chip.amount ? 'ring-2 sm:ring-3 ring-white ring-offset-1 sm:ring-offset-2 ring-offset-[#155939] scale-110' : ''}
                 ${isSpinning ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110'}
               `}
             >
@@ -93,9 +93,9 @@ const BettingTable = ({
             onClick={handleAllIn}
             disabled={isSpinning || balance <= 0}
             className={`
-              chip w-14 h-14 rounded-full font-bold
+              chip w-11 h-11 sm:w-14 sm:h-14 rounded-full font-bold
               bg-gradient-to-br from-red-500 to-red-700 text-white
-              flex flex-col items-center justify-center text-xs leading-tight
+              flex flex-col items-center justify-center text-[10px] sm:text-xs leading-tight
               ${isSpinning ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110'}
               transition-all duration-200
             `}
@@ -189,7 +189,7 @@ const BettingTable = ({
         </div>
         
         {/* Special Bets */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
           <button
             onClick={() => handleBetTypeSelect('green')}
             disabled={isSpinning || betAmount > balance}
@@ -203,7 +203,7 @@ const BettingTable = ({
           >
             <span className="flex flex-col items-center gap-1">
               <span>🟢 Green</span>
-              <span className="text-xs opacity-80">6.5x</span>
+              <span className="text-xs opacity-80">4.9x</span>
             </span>
           </button>
           
@@ -220,7 +220,7 @@ const BettingTable = ({
           >
             <span className="flex flex-col items-center gap-1">
               <span>🩷 Pink</span>
-              <span className="text-xs opacity-80">6.5x</span>
+              <span className="text-xs opacity-80">4.9x</span>
             </span>
           </button>
           
@@ -265,10 +265,10 @@ const BettingTable = ({
         <h3 className="text-white text-sm font-semibold mb-4 uppercase tracking-wider flex items-center gap-2 opacity-90">
           <span className="w-2 h-2 rounded-full bg-gradient-to-br from-[#d4af37] to-[#b8860b]"></span>
           Bet on Number
-          <span className="ml-auto text-xs font-normal text-[#d4af37]">30x Payout</span>
+          <span className="ml-auto text-xs font-normal text-[#d4af37]">24x Payout</span>
         </h3>
         
-        <div className="grid grid-cols-10 gap-1.5">
+        <div className="grid grid-cols-5 xs:grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-1 sm:gap-1.5">
           {WHEEL_NUMBERS.map((position, index) => {
             if (position.number === 'X') {
               return (
@@ -277,11 +277,11 @@ const BettingTable = ({
                   onClick={() => handleBetTypeSelect('x')}
                   disabled={isSpinning || betAmount > balance}
                   className={`
-                    number-btn aspect-square rounded-lg font-bold
+                    number-btn aspect-square rounded-md sm:rounded-lg font-bold
                     bg-gradient-to-br from-violet-500 to-purple-800 text-white 
-                    flex items-center justify-center text-sm
+                    flex items-center justify-center text-xs sm:text-sm
                     border border-violet-400/40
-                    ${isSpinning || betAmount > balance ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110 hover:shadow-lg hover:z-10'}
+                    ${isSpinning || betAmount > balance ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 sm:hover:scale-110 hover:shadow-lg hover:z-10'}
                     transition-all duration-200
                   `}
                 >
@@ -300,12 +300,12 @@ const BettingTable = ({
                 onClick={() => handleNumberSelect(number)}
                 disabled={isSpinning || betAmount > balance}
                 className={`
-                  number-btn aspect-square rounded-lg font-bold flex items-center justify-center text-sm
+                  number-btn aspect-square rounded-md sm:rounded-lg font-bold flex items-center justify-center text-xs sm:text-sm
                   ${isBlack 
                     ? 'bg-gradient-to-br from-gray-700 to-black text-white' 
                     : 'bg-gradient-to-br from-white to-gray-200 text-gray-900'}
                   ${selectedNumber === number ? 'ring-2 ring-[#d4af37] ring-offset-1 ring-offset-[#155939]' : ''}
-                  ${isSpinning || betAmount > balance ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110 hover:shadow-lg hover:z-10'}
+                  ${isSpinning || betAmount > balance ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 sm:hover:scale-110 hover:shadow-lg hover:z-10'}
                   border border-[#d4af37]/30 transition-all duration-200
                 `}
               >

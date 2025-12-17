@@ -2,7 +2,6 @@
 
 import { useRef, useEffect, useState, memo, useMemo } from 'react';
 import { WheelPosition } from '@/lib/types';
-import { generateAdditionalWheel } from '@/lib/gameUtils';
 import * as HyperParams from '@/lib/hyperParams';
 
 const ANGLE_PER_SLOT = 360 / 51;
@@ -11,12 +10,22 @@ const ANGLE_PER_SLOT = 360 / 51;
 type OuterColor = 'green' | 'pink' | 'gold' | 'red' | 'none';
 
 type RouletteWheelProps = {
-  onSpinComplete: (position: WheelPosition, secondPosition?: WheelPosition) => void;
-  isSpinning: boolean;
+  onSpinComplete: (position: WheelPosition) => void;
   winningPosition?: WheelPosition;
-  secondWinningPosition?: WheelPosition;
-  spinTwice?: boolean;
   className?: string;
+  shouldRegenerateColors?: boolean;
+  serverOuterColors?: string[];
+  
+  // NON-LIVE MODE (manual spin) - use isSpinning
+  isSpinning?: boolean;
+  forceWinningIndex?: number;
+  
+  // LIVE MODE (timer-based) - use phase + server timestamps
+  phase?: 'betting' | 'warning' | 'locked' | 'spinning' | 'result';
+  serverOffset?: number;
+  spinStartAt?: number;
+  resultAt?: number;
+  targetAngle?: number;
 };
 
 const createFixedWheelLayout = (): WheelPosition[] => {
@@ -92,23 +101,32 @@ const generateOuterColors = (): OuterColor[] => {
 
 const RouletteWheel = ({
   onSpinComplete,
-  isSpinning,
   winningPosition,
-  secondWinningPosition,
-  spinTwice = false,
   className = '',
+  shouldRegenerateColors = false,
+  serverOuterColors,
+  // Non-live mode props
+  isSpinning = false,
+  forceWinningIndex,
+  // Live mode props  
+  phase,
+  serverOffset = 0,
+  spinStartAt = 0,
+  resultAt = 0,
+  targetAngle = 0,
 }: RouletteWheelProps) => {
+  // Detect which mode we're in
+  const isLiveMode = phase !== undefined;
+  
   const wheelRef = useRef<HTMLDivElement>(null);
-  const additionalWheelRef = useRef<HTMLDivElement>(null);
   
   const [wheelRotation, setWheelRotation] = useState<number>(0);
-  const [additionalWheelRotation, setAdditionalWheelRotation] = useState<number>(0);
-  const [additionalWheel] = useState<WheelPosition[]>(generateAdditionalWheel());
   const [activeSpin, setActiveSpin] = useState<boolean>(false);
   const [isResultPhase, setIsResultPhase] = useState<boolean>(false);
+  const [isMounted, setIsMounted] = useState(false);
   
-  // Generate outer colors once per game session, regenerate on each spin
-  const [outerColors, setOuterColors] = useState<OuterColor[]>(() => generateOuterColors());
+  // Initialize as empty to avoid hydration mismatch, generate on client mount
+  const [outerColors, setOuterColors] = useState<OuterColor[]>([]);
   
   const slowSpinIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const activeSpinTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -116,8 +134,44 @@ const RouletteWheel = ({
   
   const winPositionRef = useRef<WheelPosition | null>(null);
   const secondWinPositionRef = useRef<WheelPosition | null>(null);
+  const prevColorsRef = useRef<string[] | null>(null); // Track previous colors to avoid unnecessary resets
 
+  // Responsive wheel size - will be controlled via CSS
   const wheelSize = 420;
+  
+  // Use server-provided colors if available - only update when colors actually change
+  useEffect(() => {
+    if (serverOuterColors && serverOuterColors.length === 51) {
+      // Check if colors actually changed (not just same array reference)
+      const colorsChanged = !prevColorsRef.current || 
+        prevColorsRef.current.join(',') !== serverOuterColors.join(',');
+      
+      if (colorsChanged) {
+        setOuterColors(serverOuterColors as OuterColor[]);
+        prevColorsRef.current = serverOuterColors;
+      }
+    } else if (!prevColorsRef.current) {
+      // Only generate local colors on first mount
+      setOuterColors(generateOuterColors());
+    }
+    setIsMounted(true);
+  }, [serverOuterColors]);
+  
+  // Reset wheel position when new round starts (shouldRegenerateColors triggers on betting phase start)
+  useEffect(() => {
+    if (shouldRegenerateColors && isMounted) {
+      // Reset rotation to 0 for sync - all clients start from same position
+      setWheelRotation(0);
+      if (wheelRef.current) {
+        wheelRef.current.style.transition = 'none';
+        wheelRef.current.style.transform = 'rotate(0deg)';
+      }
+      // If not using server colors, generate new local colors
+      if (!serverOuterColors || serverOuterColors.length !== 51) {
+        setOuterColors(generateOuterColors());
+      }
+    }
+  }, [shouldRegenerateColors, isMounted, serverOuterColors]);
   
   // Get the gold position index
   const goldIndex = useMemo(() => outerColors.findIndex(c => c === 'gold'), [outerColors]);
@@ -132,8 +186,7 @@ const RouletteWheel = ({
         setIsResultPhase(true);
         
         if (onSpinComplete && winPositionRef.current) {
-          const secondPos = secondWinPositionRef.current || undefined;
-          onSpinComplete(winPositionRef.current, secondPos);
+          onSpinComplete(winPositionRef.current);
         }
       }
     };
@@ -149,25 +202,108 @@ const RouletteWheel = ({
     };
   }, [onSpinComplete, activeSpin]);
   
-  useEffect(() => {
-    if (winningPosition) {
-      setIsResultPhase(true);
-    } else {
-      setIsResultPhase(false);
-    }
-  }, [winningPosition]);
+  // Track phase changes (for live mode)
+  const prevPhaseRef = useRef(phase);
+  const hasStartedSpinRef = useRef(false);
   
+  // ============================================
+  // LIVE MODE: Phase-based wheel behavior
+  // ============================================
   useEffect(() => {
-    if (!isSpinning && !activeSpin && !isResultPhase) {
+    if (!isLiveMode) return; // Skip for non-live mode
+    
+    const phaseChanged = phase !== prevPhaseRef.current;
+    prevPhaseRef.current = phase;
+    
+    // Clear any existing intervals/timeouts on phase change
+    if (phaseChanged) {
       if (slowSpinIntervalRef.current) {
         clearInterval(slowSpinIntervalRef.current);
         slowSpinIntervalRef.current = null;
       }
+      if (activeSpinTimeoutRef.current) {
+        clearTimeout(activeSpinTimeoutRef.current);
+        activeSpinTimeoutRef.current = null;
+      }
+    }
+    
+    if (phase === 'betting' || phase === 'warning' || phase === 'locked') {
+      // IDLE SPIN - slow continuous rotation
+      hasStartedSpinRef.current = false;
+      setIsResultPhase(false); // Reset result phase flag
       
-      slowSpinIntervalRef.current = setInterval(() => {
-        setWheelRotation(prev => prev + HyperParams.ANIMATION.idleSpinSpeed);
-        setAdditionalWheelRotation(prev => prev + HyperParams.ANIMATION.idleSpinSpeed * 1.2);
-      }, 50);
+      if (!slowSpinIntervalRef.current) {
+        slowSpinIntervalRef.current = setInterval(() => {
+          setWheelRotation(prev => prev + HyperParams.ANIMATION.idleSpinSpeed);
+        }, 50);
+      }
+      
+      if (wheelRef.current) {
+        wheelRef.current.style.transition = 'none';
+      }
+      
+    } else if (phase === 'spinning') {
+      // SPINNING PHASE - animate to target angle in remaining time
+      if (!hasStartedSpinRef.current && resultAt > 0 && targetAngle > 0) {
+        hasStartedSpinRef.current = true;
+        
+        const nowServer = Date.now() + serverOffset;
+        const animationDuration = Math.max(0, resultAt - nowServer);
+        
+        if (animationDuration > 0 && wheelRef.current) {
+          wheelRef.current.style.transition = `transform ${animationDuration}ms cubic-bezier(0.1, 0.7, 0.1, 1)`;
+          wheelRef.current.style.transform = `rotate(${targetAngle}deg)`;
+          setWheelRotation(targetAngle);
+          
+          activeSpinTimeoutRef.current = setTimeout(() => {
+            if (winPositionRef.current || winningPosition) {
+              onSpinComplete(winPositionRef.current || winningPosition!);
+            }
+            setActiveSpin(false);
+            setIsResultPhase(true);
+          }, animationDuration + 100);
+        }
+      }
+      
+    } else if (phase === 'result') {
+      // RESULT PHASE - wheel frozen at target angle
+      if (wheelRef.current && targetAngle > 0) {
+        wheelRef.current.style.transition = 'none';
+        wheelRef.current.style.transform = `rotate(${targetAngle}deg)`;
+        setWheelRotation(targetAngle);
+      }
+      setIsResultPhase(true);
+    }
+    
+    return () => {
+      if (slowSpinIntervalRef.current && (phase === 'spinning' || phase === 'result')) {
+        clearInterval(slowSpinIntervalRef.current);
+        slowSpinIntervalRef.current = null;
+      }
+    };
+  }, [isLiveMode, phase, serverOffset, spinStartAt, resultAt, targetAngle, winningPosition, onSpinComplete]);
+  
+  // Live mode: Update wheel position during idle spin
+  useEffect(() => {
+    if (!isLiveMode) return;
+    if ((phase === 'betting' || phase === 'warning' || phase === 'locked') && wheelRef.current) {
+      wheelRef.current.style.transform = `rotate(${wheelRotation}deg)`;
+    }
+  }, [isLiveMode, wheelRotation, phase]);
+  
+  // ============================================
+  // NON-LIVE MODE: Manual isSpinning-based behavior
+  // ============================================
+  useEffect(() => {
+    if (isLiveMode) return; // Skip for live mode
+    
+    // Idle spin when not spinning
+    if (!isSpinning && !activeSpin && !isResultPhase) {
+      if (!slowSpinIntervalRef.current) {
+        slowSpinIntervalRef.current = setInterval(() => {
+          setWheelRotation(prev => prev + HyperParams.ANIMATION.idleSpinSpeed);
+        }, 50);
+      }
     } else if (slowSpinIntervalRef.current) {
       clearInterval(slowSpinIntervalRef.current);
       slowSpinIntervalRef.current = null;
@@ -179,9 +315,12 @@ const RouletteWheel = ({
         slowSpinIntervalRef.current = null;
       }
     };
-  }, [isSpinning, activeSpin, isResultPhase]);
+  }, [isLiveMode, isSpinning, activeSpin, isResultPhase]);
   
+  // Non-live mode: Handle spin start
   useEffect(() => {
+    if (isLiveMode) return; // Skip for live mode
+    
     if (isSpinning && !activeSpin) {
       completedSpinRef.current = false;
       
@@ -190,8 +329,10 @@ const RouletteWheel = ({
         activeSpinTimeoutRef.current = null;
       }
       
-      // Regenerate outer colors for each new spin (gold position changes)
-      setOuterColors(generateOuterColors());
+      // Regenerate colors if not using server colors
+      if (!serverOuterColors || serverOuterColors.length !== 51) {
+        setOuterColors(generateOuterColors());
+      }
       
       setActiveSpin(true);
       setIsResultPhase(false);
@@ -201,43 +342,39 @@ const RouletteWheel = ({
         slowSpinIntervalRef.current = null;
       }
       
-      const randomIndex = Math.floor(Math.random() * WHEEL_NUMBERS.length);
-      const winPosition = WHEEL_NUMBERS[randomIndex];
+      // Use force winning index if provided, otherwise random
+      const randomIndex = forceWinningIndex !== undefined && forceWinningIndex >= 0 
+        ? forceWinningIndex 
+        : Math.floor(Math.random() * WHEEL_NUMBERS.length);
+      const innerPosition = WHEEL_NUMBERS[randomIndex];
+      
+      const outerColorAtIndex = outerColors[randomIndex] || 'none';
+      const winPosition = {
+        ...innerPosition,
+        outerColor: outerColorAtIndex
+      };
       
       winPositionRef.current = winPosition;
-      secondWinPositionRef.current = null;
       
       const segmentCenterAngle = (randomIndex + 0.5) * ANGLE_PER_SLOT;
-      const targetAngle = 360 - segmentCenterAngle;
+      const targetRotationAngle = 360 - segmentCenterAngle;
       
-      const rotations = HyperParams.ANIMATION.minRotations + 
+      // Calculate spin rotation
+      const randomRotations = HyperParams.ANIMATION.minRotations + 
         Math.floor(Math.random() * (HyperParams.ANIMATION.maxRotations - HyperParams.ANIMATION.minRotations));
-      const newRotation = (wheelRotation - (wheelRotation % 360)) + rotations * 360 + targetAngle;
+        
+      const currentMod = wheelRotation % 360;
+      let diff = targetRotationAngle - currentMod;
+      if (diff < 0) diff += 360;
+      
+      const newRotation = wheelRotation + (randomRotations * 360) + diff;
+      
+      setWheelRotation(newRotation);
       
       if (wheelRef.current) {
         wheelRef.current.style.transition = `transform ${HyperParams.ANIMATION.spinDuration}ms cubic-bezier(0.2, 0.8, 0.3, 0.9)`;
         wheelRef.current.style.transform = `rotate(${newRotation}deg)`;
       }
-      
-      if (spinTwice && additionalWheelRef.current) {
-        const additionalRandomIndex = Math.floor(Math.random() * additionalWheel.length);
-        const secondWinPosition = additionalWheel[additionalRandomIndex];
-        
-        secondWinPositionRef.current = secondWinPosition;
-        
-        const additionalTargetAngle = additionalRandomIndex * (360 / additionalWheel.length);
-        
-        const additionalRotations = rotations - 2 + Math.floor(Math.random() * 4);
-        const newAdditionalRotation = (additionalWheelRotation - (additionalWheelRotation % 360)) + 
-          additionalRotations * 360 + additionalTargetAngle;
-        
-        additionalWheelRef.current.style.transition = `transform ${HyperParams.ANIMATION.spinDuration + 500}ms cubic-bezier(0.15, 0.85, 0.35, 0.95)`;
-        additionalWheelRef.current.style.transform = `rotate(${newAdditionalRotation}deg)`;
-        
-        setAdditionalWheelRotation(newAdditionalRotation);
-      }
-      
-      setWheelRotation(newRotation);
       
       activeSpinTimeoutRef.current = setTimeout(() => {
         if (!completedSpinRef.current) {
@@ -246,8 +383,7 @@ const RouletteWheel = ({
           setIsResultPhase(true);
           
           if (onSpinComplete && winPositionRef.current) {
-            const secondPos = secondWinPositionRef.current || undefined;
-            onSpinComplete(winPositionRef.current, secondPos);
+            onSpinComplete(winPositionRef.current);
           }
         }
       }, HyperParams.ANIMATION.spinDuration + 500);
@@ -259,7 +395,24 @@ const RouletteWheel = ({
         activeSpinTimeoutRef.current = null;
       }
     };
-  }, [isSpinning, activeSpin, additionalWheel, onSpinComplete, spinTwice, wheelRotation, additionalWheelRotation]);
+  }, [isLiveMode, isSpinning, activeSpin, forceWinningIndex, serverOuterColors, outerColors, wheelRotation, onSpinComplete]);
+  
+  // Non-live mode: Apply wheel rotation during idle spin
+  useEffect(() => {
+    if (isLiveMode) return;
+    if (!isSpinning && !activeSpin && !isResultPhase && wheelRef.current) {
+      wheelRef.current.style.transform = `rotate(${wheelRotation}deg)`;
+    }
+  }, [isLiveMode, wheelRotation, isSpinning, activeSpin, isResultPhase]);
+  
+  // Handle winningPosition changes (for result display)
+  useEffect(() => {
+    if (winningPosition) {
+      setIsResultPhase(true);
+    } else {
+      setIsResultPhase(false);
+    }
+  }, [winningPosition]);
   
   // Generate SVG path for a wheel segment
   const createSegmentPath = (index: number, innerRadius: number, outerRadius: number, centerX: number, centerY: number) => {
@@ -298,7 +451,7 @@ const RouletteWheel = ({
   const textRadius = (mainSegmentOuter + mainSegmentInner) / 2;
   
   return (
-    <div className={`relative mx-auto ${className}`} style={{ maxWidth: wheelSize + 40 }}>
+    <div className={`relative mx-auto ${className} wheel-responsive-container`} style={{ maxWidth: wheelSize + 40, width: '100%' }}>
       {/* Glow effect */}
       <div 
         className="absolute inset-0 rounded-full opacity-50"
@@ -311,17 +464,18 @@ const RouletteWheel = ({
       
       {/* Main wheel container */}
       <div 
-        className="relative mx-auto rounded-full"
+        className="relative mx-auto rounded-full wheel-main"
         style={{ 
-          width: wheelSize, 
-          height: wheelSize,
+          width: '100%',
+          maxWidth: wheelSize,
+          aspectRatio: '1 / 1',
           background: 'linear-gradient(145deg, #2d2010 0%, #1a1208 100%)',
           boxShadow: `
-            0 0 0 10px #b8860b,
-            0 0 0 14px #8b6914,
-            0 0 0 18px rgba(212, 175, 55, 0.3),
-            0 0 60px rgba(0, 0, 0, 0.8),
-            inset 0 0 60px rgba(0, 0, 0, 0.5)
+            0 0 0 clamp(6px, 2vw, 10px) #b8860b,
+            0 0 0 clamp(9px, 2.5vw, 14px) #8b6914,
+            0 0 0 clamp(12px, 3vw, 18px) rgba(212, 175, 55, 0.3),
+            0 0 clamp(30px, 6vw, 60px) rgba(0, 0, 0, 0.8),
+            inset 0 0 clamp(30px, 6vw, 60px) rgba(0, 0, 0, 0.5)
           `
         }}
       >
@@ -548,97 +702,6 @@ const RouletteWheel = ({
       </div>
       
       {/* Additional wheel for special bets */}
-      {spinTwice && (
-        <div className="mt-8 relative w-full max-w-xs mx-auto">
-          <div 
-            className="relative mx-auto rounded-full overflow-hidden"
-            style={{
-              width: 200,
-              height: 200,
-              background: 'linear-gradient(145deg, #2d1810 0%, #1a0f0a 100%)',
-              boxShadow: '0 0 0 6px #6b4c41, 0 0 30px rgba(0,0,0,0.5)'
-            }}
-          >
-            <div 
-              className="absolute z-20 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-full flex items-center justify-center"
-              style={{
-                background: 'linear-gradient(145deg, #8b6347 0%, #5a3e36 100%)',
-                border: '3px solid #5a3e36'
-              }}
-            >
-              {secondWinningPosition && isResultPhase && (
-                <div 
-                  className={`
-                    w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm
-                    ${secondWinningPosition.color === 'black' ? 'bg-black text-white' : 
-                      secondWinningPosition.color === 'white' ? 'bg-white text-black' :
-                      secondWinningPosition.color === 'green' ? 'bg-green-500 text-white' :
-                      secondWinningPosition.color === 'pink' ? 'bg-pink-500 text-white' :
-                      secondWinningPosition.color === 'gold' ? 'bg-yellow-500 text-black' :
-                      'bg-red-600 text-white'}
-                    border-2 border-yellow-400
-                  `}
-                >
-                  {secondWinningPosition.number}
-                </div>
-              )}
-            </div>
-            
-            <div 
-              ref={additionalWheelRef}
-              className="absolute inset-0 z-10"
-              style={{ 
-                transformOrigin: 'center center',
-                transform: `rotate(${additionalWheelRotation}deg)` 
-              }}
-            >
-              {additionalWheel.map((_, index) => {
-                const angle = index * (360 / additionalWheel.length);
-                return (
-                  <div 
-                    key={`add-ray-${index}`}
-                    className="absolute top-1/2 left-1/2 h-1/2 w-0.5"
-                    style={{ 
-                      transformOrigin: 'top center',
-                      transform: `rotate(${angle}deg)`,
-                      background: 'linear-gradient(to bottom, #5a3e36, transparent)'
-                    }}
-                  />
-                );
-              })}
-              
-              {additionalWheel.map((position, index) => {
-                const angle = index * (360 / additionalWheel.length);
-                const radians = (angle * Math.PI) / 180;
-                
-                const radius = 42;
-                const x = 50 + radius * Math.sin(radians);
-                const y = 50 - radius * Math.cos(radians);
-                
-                const { color } = position;
-                let bgClass = 'from-red-500 to-red-700';
-                if (color === 'green') bgClass = 'from-green-400 to-green-600';
-                else if (color === 'pink') bgClass = 'from-pink-400 to-pink-600';
-                else if (color === 'gold') bgClass = 'from-yellow-400 to-yellow-600';
-                
-                return (
-                  <div
-                    key={`add-position-${index}`}
-                    className={`absolute w-7 h-7 flex items-center justify-center rounded-full bg-gradient-to-br ${bgClass} text-white text-xs font-bold border-2 border-[#5a3e36] shadow-md`}
-                    style={{
-                      top: `${y}%`,
-                      left: `${x}%`,
-                      transform: `translate(-50%, -50%) rotate(${angle}deg)`,
-                    }}
-                  >
-                    <span style={{ transform: `rotate(${-angle}deg)` }}>{position.number}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
