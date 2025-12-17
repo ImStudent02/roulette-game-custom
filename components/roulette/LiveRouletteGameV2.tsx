@@ -57,21 +57,46 @@ const LiveRouletteGameV2 = () => {
     editChatMessage,
   } = useWebSocket(WS_URL);
   
+  // Server time offset for accurate sync
+  const [serverOffset, setServerOffset] = useState(0);
+  
+  // Display time state (updated via interval)
+  const [displayTime, setDisplayTime] = useState(0);
+  
   // Derived state from server
   const phase = gameState?.phase || 'betting';
-  const displayTime = gameState?.displayTime || 0;
   const roundNumber = gameState?.roundNumber || 1;
   const serverGoldPosition = gameState?.goldPosition ?? -1;
   const serverGoldMultiplier = gameState?.goldMultiplier || 50;
-  const serverOuterColors = gameState?.outerColors || []; // Server-synced colors!
+  const serverOuterColors = gameState?.outerColors || [];
   const winningIndex = gameState?.winningIndex ?? -1;
   const winningPosition = gameState?.winningPosition as WheelPosition | undefined;
   
+  // Absolute timestamps from server
+  const phaseEndsAt = gameState?.phaseEndsAt || 0;
+  const spinStartAt = gameState?.spinStartAt || 0;
+  const resultAt = gameState?.resultAt || 0;
+  const targetAngle = gameState?.targetAngle || 0;
+  
+  // Update display time every second using interval
+  useEffect(() => {
+    const updateTimer = () => {
+      const nowServer = Date.now() + serverOffset;
+      const remaining = Math.max(0, Math.floor((phaseEndsAt - nowServer) / 1000));
+      setDisplayTime(remaining);
+    };
+    
+    // Update immediately
+    updateTimer();
+    
+    // Update every second
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [phaseEndsAt, serverOffset]);
+  
   // Track if we need to trigger a spin
-  const [isSpinning, setIsSpinning] = useState(false);
   const [shouldRegenerateGold, setShouldRegenerateGold] = useState(false);
   const lastRoundRef = useRef(0);
-  const hasTriggeredSpinRef = useRef(false); // Track if spin was triggered this round
   
   // Check for existing auth on mount
   useEffect(() => {
@@ -113,46 +138,22 @@ const LiveRouletteGameV2 = () => {
     }
   }, [balance, isLoading]);
   
-  // Time-based animation control for precise sync
-  // Use local interval to check time precisely (not dependent on server message timing)
+  // Calculate server time offset for accurate sync
   useEffect(() => {
-    if (!gameState || !gameState.roundStartTime) return;
-    
-    const roundStartTime = gameState.roundStartTime;
-    const spinStartTime = roundStartTime + (TIMER_CONFIG.bettingDuration + TIMER_CONFIG.lockedDuration) * 1000;
-    const resultStartTime = spinStartTime + TIMER_CONFIG.spinDuration * 1000;
-    
-    // New round detection - regenerate colors
+    if (gameState?.serverTime) {
+      const offset = gameState.serverTime - Date.now();
+      setServerOffset(offset);
+    }
+  }, [gameState?.serverTime]);
+  
+  // New round detection - regenerate colors
+  useEffect(() => {
     if (roundNumber > lastRoundRef.current) {
       setShouldRegenerateGold(true);
       setTimeout(() => setShouldRegenerateGold(false), 100);
       lastRoundRef.current = roundNumber;
-      hasTriggeredSpinRef.current = false; // Reset for new round
     }
-    
-    // Local interval for precise phase monitoring
-    const checkPhase = () => {
-      const now = Date.now();
-      const shouldBeSpinning = now >= spinStartTime && now < resultStartTime;
-      
-      // Trigger spin exactly once when spin phase starts
-      if (shouldBeSpinning && !hasTriggeredSpinRef.current) {
-        setIsSpinning(true);
-        hasTriggeredSpinRef.current = true;
-      }
-      
-      // Stop spin exactly when result phase starts
-      if (now >= resultStartTime && hasTriggeredSpinRef.current) {
-        setIsSpinning(false);
-      }
-    };
-    
-    // Check immediately and then every 100ms
-    checkPhase();
-    const interval = setInterval(checkPhase, 100);
-    
-    return () => clearInterval(interval);
-  }, [gameState?.roundStartTime, roundNumber]);
+  }, [roundNumber]);
   
   // Calculate results when round ends
   useEffect(() => {
@@ -174,7 +175,7 @@ const LiveRouletteGameV2 = () => {
           winAmount = bet.amount * 1.9;
         } else if (bet.type === 'number' && bet.targetNumber === winningPosition.number) {
           betWon = true;
-          winAmount = bet.amount * 30;
+          winAmount = bet.amount * 24; // Was 30x, reduced to 24x to prevent exploits
         }
         // Add more bet type checks as needed
         
@@ -336,6 +337,20 @@ const LiveRouletteGameV2 = () => {
                 <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></span>
                 {isConnected ? `Round #${roundNumber}` : 'Connecting...'}
               </span>
+              <a 
+                href="/story"
+                className="px-2 py-1 bg-gradient-to-r from-[#b45309] to-[#92400e] text-white text-[10px] sm:text-xs font-bold rounded-full hover:shadow-lg hover:shadow-[#fbbf24]/30 transition-all flex items-center gap-1"
+              >
+                <span>🥭</span>
+                <span className="hidden sm:inline">Story</span>
+              </a>
+              <a 
+                href="/rules"
+                className="px-2 py-1 bg-gradient-to-r from-[#4b5563] to-[#374151] text-white text-[10px] sm:text-xs font-bold rounded-full hover:shadow-lg hover:shadow-white/10 transition-all flex items-center gap-1"
+              >
+                <span>📜</span>
+                <span className="hidden sm:inline">Rules</span>
+              </a>
             </div>
             
             <div className="flex items-center gap-2 sm:gap-3">
@@ -367,9 +382,12 @@ const LiveRouletteGameV2 = () => {
           <div className="flex justify-center relative">
             <RouletteWheel 
               onSpinComplete={handleSpinComplete}
-              isSpinning={isSpinning}
+              phase={phase}
+              serverOffset={serverOffset}
+              spinStartAt={spinStartAt}
+              resultAt={resultAt}
+              targetAngle={targetAngle}
               winningPosition={phase === 'result' ? winningPosition : undefined}
-              forceWinningIndex={isSpinning ? winningIndex : undefined}
               shouldRegenerateColors={shouldRegenerateGold}
               serverOuterColors={serverOuterColors.length === 51 ? serverOuterColors : undefined}
             />

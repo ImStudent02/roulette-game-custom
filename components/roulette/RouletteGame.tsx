@@ -254,6 +254,20 @@ const RouletteGame = () => {
                 <span className="hidden xs:inline">LIVE</span>
                 <span className="xs:hidden">🔴</span>
               </a>
+              <a 
+                href="/story"
+                className="px-2 py-1 sm:px-4 sm:py-2 bg-gradient-to-r from-[#b45309] to-[#92400e] text-white text-xs sm:text-sm font-bold rounded-full hover:shadow-lg hover:shadow-[#fbbf24]/30 transition-all flex items-center gap-1 sm:gap-2"
+              >
+                <span>🥭</span>
+                <span className="hidden sm:inline">Story</span>
+              </a>
+              <a 
+                href="/rules"
+                className="px-2 py-1 sm:px-4 sm:py-2 bg-gradient-to-r from-[#4b5563] to-[#374151] text-white text-xs sm:text-sm font-bold rounded-full hover:shadow-lg hover:shadow-white/10 transition-all flex items-center gap-1 sm:gap-2"
+              >
+                <span>📜</span>
+                <span className="hidden sm:inline">Rules</span>
+              </a>
             </div>
             
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">

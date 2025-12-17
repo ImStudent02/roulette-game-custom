@@ -5,8 +5,8 @@
   "scripts": {
     "build": "next build",
     "start": "next start",
-    "dev": "next dev",
-    "dev:live": "node server.js"
+    "dev": "node server.js",
+    "dev:simple": "next dev"
   },
   "dependencies": {
     "@types/uuid": "^10.0.0",
@@ -30,6 +30,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/ws": "^8.5.13",
+    "concurrently": "^9.2.1",
     "eslint": "^9",
     "eslint-config-next": "15.2.4",
     "tailwindcss": "^4",

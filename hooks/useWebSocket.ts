@@ -3,23 +3,26 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 
 export interface GameState {
-  // Timing - clients sync from this
+  // Server time for offset calculation
   serverTime: number;
-  serverEpoch: number;
-  roundStartTime: number; // Client calculates timer + animation from this
-  
-  // Game state
   roundNumber: number;
   phase: 'betting' | 'warning' | 'locked' | 'spinning' | 'result';
-  displayTime: number;
   
-  // Result (deterministic, same for all clients)
+  // ABSOLUTE timestamps (clients sync from these)
+  roundStartTime: number;
+  phaseEndsAt: number;
+  spinStartAt: number;  // When spin phase begins
+  resultAt: number;     // When result phase begins (wheel must stop here)
+  
+  // Winning data
   winningIndex: number;
   winningPosition: { number: number | string; color: string };
+  targetAngle: number;  // Final wheel rotation angle
+  
+  // Colors
   outerColors: string[];
   goldPosition: number;
   goldMultiplier: number;
-  // NO currentRotation - client handles smooth animation locally!
 }
 
 export interface ChatMessage {

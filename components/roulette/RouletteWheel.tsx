@@ -11,12 +11,21 @@ type OuterColor = 'green' | 'pink' | 'gold' | 'red' | 'none';
 
 type RouletteWheelProps = {
   onSpinComplete: (position: WheelPosition) => void;
-  isSpinning: boolean;
   winningPosition?: WheelPosition;
   className?: string;
-  forceWinningIndex?: number; // Server-controlled winning index
-  shouldRegenerateColors?: boolean; // Trigger to regenerate gold position
-  serverOuterColors?: string[]; // Server-provided outer colors for sync
+  shouldRegenerateColors?: boolean;
+  serverOuterColors?: string[];
+  
+  // NON-LIVE MODE (manual spin) - use isSpinning
+  isSpinning?: boolean;
+  forceWinningIndex?: number;
+  
+  // LIVE MODE (timer-based) - use phase + server timestamps
+  phase?: 'betting' | 'warning' | 'locked' | 'spinning' | 'result';
+  serverOffset?: number;
+  spinStartAt?: number;
+  resultAt?: number;
+  targetAngle?: number;
 };
 
 const createFixedWheelLayout = (): WheelPosition[] => {
@@ -92,13 +101,23 @@ const generateOuterColors = (): OuterColor[] => {
 
 const RouletteWheel = ({
   onSpinComplete,
-  isSpinning,
   winningPosition,
   className = '',
-  forceWinningIndex,
   shouldRegenerateColors = false,
   serverOuterColors,
+  // Non-live mode props
+  isSpinning = false,
+  forceWinningIndex,
+  // Live mode props  
+  phase,
+  serverOffset = 0,
+  spinStartAt = 0,
+  resultAt = 0,
+  targetAngle = 0,
 }: RouletteWheelProps) => {
+  // Detect which mode we're in
+  const isLiveMode = phase !== undefined;
+  
   const wheelRef = useRef<HTMLDivElement>(null);
   
   const [wheelRotation, setWheelRotation] = useState<number>(0);
@@ -183,24 +202,108 @@ const RouletteWheel = ({
     };
   }, [onSpinComplete, activeSpin]);
   
-  useEffect(() => {
-    if (winningPosition) {
-      setIsResultPhase(true);
-    } else {
-      setIsResultPhase(false);
-    }
-  }, [winningPosition]);
+  // Track phase changes (for live mode)
+  const prevPhaseRef = useRef(phase);
+  const hasStartedSpinRef = useRef(false);
   
+  // ============================================
+  // LIVE MODE: Phase-based wheel behavior
+  // ============================================
   useEffect(() => {
-    if (!isSpinning && !activeSpin && !isResultPhase) {
+    if (!isLiveMode) return; // Skip for non-live mode
+    
+    const phaseChanged = phase !== prevPhaseRef.current;
+    prevPhaseRef.current = phase;
+    
+    // Clear any existing intervals/timeouts on phase change
+    if (phaseChanged) {
       if (slowSpinIntervalRef.current) {
         clearInterval(slowSpinIntervalRef.current);
         slowSpinIntervalRef.current = null;
       }
+      if (activeSpinTimeoutRef.current) {
+        clearTimeout(activeSpinTimeoutRef.current);
+        activeSpinTimeoutRef.current = null;
+      }
+    }
+    
+    if (phase === 'betting' || phase === 'warning' || phase === 'locked') {
+      // IDLE SPIN - slow continuous rotation
+      hasStartedSpinRef.current = false;
+      setIsResultPhase(false); // Reset result phase flag
       
-      slowSpinIntervalRef.current = setInterval(() => {
-        setWheelRotation(prev => prev + HyperParams.ANIMATION.idleSpinSpeed);
-      }, 50);
+      if (!slowSpinIntervalRef.current) {
+        slowSpinIntervalRef.current = setInterval(() => {
+          setWheelRotation(prev => prev + HyperParams.ANIMATION.idleSpinSpeed);
+        }, 50);
+      }
+      
+      if (wheelRef.current) {
+        wheelRef.current.style.transition = 'none';
+      }
+      
+    } else if (phase === 'spinning') {
+      // SPINNING PHASE - animate to target angle in remaining time
+      if (!hasStartedSpinRef.current && resultAt > 0 && targetAngle > 0) {
+        hasStartedSpinRef.current = true;
+        
+        const nowServer = Date.now() + serverOffset;
+        const animationDuration = Math.max(0, resultAt - nowServer);
+        
+        if (animationDuration > 0 && wheelRef.current) {
+          wheelRef.current.style.transition = `transform ${animationDuration}ms cubic-bezier(0.1, 0.7, 0.1, 1)`;
+          wheelRef.current.style.transform = `rotate(${targetAngle}deg)`;
+          setWheelRotation(targetAngle);
+          
+          activeSpinTimeoutRef.current = setTimeout(() => {
+            if (winPositionRef.current || winningPosition) {
+              onSpinComplete(winPositionRef.current || winningPosition!);
+            }
+            setActiveSpin(false);
+            setIsResultPhase(true);
+          }, animationDuration + 100);
+        }
+      }
+      
+    } else if (phase === 'result') {
+      // RESULT PHASE - wheel frozen at target angle
+      if (wheelRef.current && targetAngle > 0) {
+        wheelRef.current.style.transition = 'none';
+        wheelRef.current.style.transform = `rotate(${targetAngle}deg)`;
+        setWheelRotation(targetAngle);
+      }
+      setIsResultPhase(true);
+    }
+    
+    return () => {
+      if (slowSpinIntervalRef.current && (phase === 'spinning' || phase === 'result')) {
+        clearInterval(slowSpinIntervalRef.current);
+        slowSpinIntervalRef.current = null;
+      }
+    };
+  }, [isLiveMode, phase, serverOffset, spinStartAt, resultAt, targetAngle, winningPosition, onSpinComplete]);
+  
+  // Live mode: Update wheel position during idle spin
+  useEffect(() => {
+    if (!isLiveMode) return;
+    if ((phase === 'betting' || phase === 'warning' || phase === 'locked') && wheelRef.current) {
+      wheelRef.current.style.transform = `rotate(${wheelRotation}deg)`;
+    }
+  }, [isLiveMode, wheelRotation, phase]);
+  
+  // ============================================
+  // NON-LIVE MODE: Manual isSpinning-based behavior
+  // ============================================
+  useEffect(() => {
+    if (isLiveMode) return; // Skip for live mode
+    
+    // Idle spin when not spinning
+    if (!isSpinning && !activeSpin && !isResultPhase) {
+      if (!slowSpinIntervalRef.current) {
+        slowSpinIntervalRef.current = setInterval(() => {
+          setWheelRotation(prev => prev + HyperParams.ANIMATION.idleSpinSpeed);
+        }, 50);
+      }
     } else if (slowSpinIntervalRef.current) {
       clearInterval(slowSpinIntervalRef.current);
       slowSpinIntervalRef.current = null;
@@ -212,9 +315,12 @@ const RouletteWheel = ({
         slowSpinIntervalRef.current = null;
       }
     };
-  }, [isSpinning, activeSpin, isResultPhase]);
+  }, [isLiveMode, isSpinning, activeSpin, isResultPhase]);
   
+  // Non-live mode: Handle spin start
   useEffect(() => {
+    if (isLiveMode) return; // Skip for live mode
+    
     if (isSpinning && !activeSpin) {
       completedSpinRef.current = false;
       
@@ -223,7 +329,7 @@ const RouletteWheel = ({
         activeSpinTimeoutRef.current = null;
       }
       
-      // Only regenerate colors if NOT using server-provided colors
+      // Regenerate colors if not using server colors
       if (!serverOuterColors || serverOuterColors.length !== 51) {
         setOuterColors(generateOuterColors());
       }
@@ -236,50 +342,33 @@ const RouletteWheel = ({
         slowSpinIntervalRef.current = null;
       }
       
-      // Use force winning index if provided (server mode), otherwise random
+      // Use force winning index if provided, otherwise random
       const randomIndex = forceWinningIndex !== undefined && forceWinningIndex >= 0 
         ? forceWinningIndex 
         : Math.floor(Math.random() * WHEEL_NUMBERS.length);
       const innerPosition = WHEEL_NUMBERS[randomIndex];
       
-      // Get the outer color at this index (for gold/green/pink win detection)
       const outerColorAtIndex = outerColors[randomIndex] || 'none';
-      
-      // Create winning position with both inner and outer color
       const winPosition = {
         ...innerPosition,
         outerColor: outerColorAtIndex
       };
       
       winPositionRef.current = winPosition;
-      secondWinPositionRef.current = null;
       
       const segmentCenterAngle = (randomIndex + 0.5) * ANGLE_PER_SLOT;
-      const targetAngle = 360 - segmentCenterAngle;
+      const targetRotationAngle = 360 - segmentCenterAngle;
       
-      // Calculate rotation based on mode
-      const isSyncMode = serverOuterColors && serverOuterColors.length === 51;
-      let newRotation: number;
-      
-      if (isSyncMode) {
-        // SYNC MODE: Absolute calculation (clients reset to 0 at start of round)
-        // Must use fixed rotations for all clients to end at exact same angle
-        const fixedRotations = 12;
-        newRotation = fixedRotations * 360 + targetAngle;
-      } else {
-        // LOCAL MODE: Relative calculation (continuous spinning)
-        // Add to current rotation to ensure it always spins forward
-        const randomRotations = HyperParams.ANIMATION.minRotations + 
-          Math.floor(Math.random() * (HyperParams.ANIMATION.maxRotations - HyperParams.ANIMATION.minRotations));
-          
-        const currentMod = wheelRotation % 360;
-        let diff = targetAngle - currentMod;
-        if (diff < 0) diff += 360;
+      // Calculate spin rotation
+      const randomRotations = HyperParams.ANIMATION.minRotations + 
+        Math.floor(Math.random() * (HyperParams.ANIMATION.maxRotations - HyperParams.ANIMATION.minRotations));
         
-        newRotation = wheelRotation + (randomRotations * 360) + diff;
-      }
+      const currentMod = wheelRotation % 360;
+      let diff = targetRotationAngle - currentMod;
+      if (diff < 0) diff += 360;
       
-      // Set wheel rotation state for tracking
+      const newRotation = wheelRotation + (randomRotations * 360) + diff;
+      
       setWheelRotation(newRotation);
       
       if (wheelRef.current) {
@@ -306,7 +395,24 @@ const RouletteWheel = ({
         activeSpinTimeoutRef.current = null;
       }
     };
-  }, [isSpinning, activeSpin, onSpinComplete, wheelRotation]);
+  }, [isLiveMode, isSpinning, activeSpin, forceWinningIndex, serverOuterColors, outerColors, wheelRotation, onSpinComplete]);
+  
+  // Non-live mode: Apply wheel rotation during idle spin
+  useEffect(() => {
+    if (isLiveMode) return;
+    if (!isSpinning && !activeSpin && !isResultPhase && wheelRef.current) {
+      wheelRef.current.style.transform = `rotate(${wheelRotation}deg)`;
+    }
+  }, [isLiveMode, wheelRotation, isSpinning, activeSpin, isResultPhase]);
+  
+  // Handle winningPosition changes (for result display)
+  useEffect(() => {
+    if (winningPosition) {
+      setIsResultPhase(true);
+    } else {
+      setIsResultPhase(false);
+    }
+  }, [winningPosition]);
   
   // Generate SVG path for a wheel segment
   const createSegmentPath = (index: number, innerRadius: number, outerRadius: number, centerX: number, centerY: number) => {

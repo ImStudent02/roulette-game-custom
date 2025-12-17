@@ -13,9 +13,10 @@ A web-based roulette game with unique rules, additional wheel mechanics, and vir
 - **Main Wheel**: 51 numbers (1-50 + X) with Black & White positioning
 - **Additional Wheel**: Green, Pink, Gold, and Red positions with special rules
 - **Betting Options**: Black/White, Even/Odd, Green/Pink, Gold, X, and specific numbers
-- **Multipliers**: Different multipliers for each bet type
+- **Multipliers**: Carefully balanced to ensure house edge on all bet types
 - **Gold Mystery**: Gold multiplier is hidden (50x - 200x) until result!
 - **Live Mode**: Real-time multiplayer with synchronized wheel and chat
+- **Story Mode**: "The House of the Mango Devil" 🥭 - with TTS narration
 - **Virtual Currency**: Starting balance, winnings, and cheat codes
 
 ## Game Modes
@@ -61,22 +62,52 @@ roulette-game/
 
 Each directory has its own `README.md` with detailed documentation.
 
-## Game Rules
+## Game Rules & Payouts
 
-- **Black & White**: 1.9x multiplier
-- **Even-Odd**: 1.8x multiplier
-- **Green & Pink**: 6.5x multiplier
-- **Gold**: 50x, 100x, 150x, or 200x multiplier (variable)
-- **X**: 1.0x multiplier
-- **Winning Number**: 30x multiplier
+| Bet Type | Positions | Win Prob | Multiplier | House Edge |
+| -------- | --------- | -------- | ---------- | ---------- |
+| Black    | 25/51     | 49.0%    | 1.9x       | ~7%        |
+| White    | 25/51     | 49.0%    | 1.9x       | ~7%        |
+| Even     | 25/51     | 49.0%    | 1.8x       | ~12%       |
+| Odd      | 25/51     | 49.0%    | 1.8x       | ~12%       |
+| Green    | 5/51      | 9.8%     | 4.9x       | ~4%        |
+| Pink     | 5/51      | 9.8%     | 4.9x       | ~4%        |
+| Number   | 1/51      | 1.96%    | 24x        | ~53%       |
+| X        | 1/51      | 1.96%    | 24x\*      | ~53%       |
+| Gold     | 1/51      | 1.96%    | 50-200x    | Variable   |
 
-### Special Rule
+> **\*X Special Rule:** If you bet on X and X lands = **24x payout**. If X lands but you bet on something else = **1x refund** (your bet is returned).
 
-If a bet on Gold exceeds 1000 units, two balls will roll together, resulting in two winning numbers.
+### Anti-Exploit Design 🛡️
+
+Multipliers are **mathematically designed** to ensure the house always has an edge, even if players try "coverage betting" strategies:
+
+**Example: Betting on 25 numbers (half the wheel)**
+
+- Cost: 25 units
+- Win return: 24 units (24x multiplier)
+- Net: **-1 unit per spin** = 4% house edge ✓
+
+**Example: Covering all Green + Pink (10 positions)**
+
+- Expected return: 4.9 × (10/51) = 0.96
+- Net: **4% house edge** ✓
+
+> "Covering more won't make you smarter." 🎲
 
 ### Cheat Code
 
 Enter the code "@mrmoney" in the cheat code input box to receive 5,000 chips.
+
+---
+
+## 🚧 Pending Features (Not Yet Implemented)
+
+- [ ] **Two-Ball Gold Rule**: If gold bet exceeds 1000 units, two balls roll together
+- [ ] **Server-Side Betting**: Currently bets are processed client-side only
+- [ ] **Real Money Integration**: Virtual currency only for now
+- [ ] **Leaderboards**: Global ranking system
+- [ ] **Cinematic Story Images**: AI-generated images for story mode (assets exist in `public/img/`)
 
 Open-source contributions are welcome! Even the smallest help will be acknowledged in the final release.
 

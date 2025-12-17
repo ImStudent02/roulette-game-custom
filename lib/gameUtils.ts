@@ -148,13 +148,15 @@ export const generateAdditionalWheel = (): WheelPosition[] => {
 };
 
 // Multiplier mapping based on bet type, adjusted by hyperparameters
+// ANTI-EXPLOIT: Number at 24x means betting on 25 numbers costs 25 and wins 24 = house edge
+// Green/Pink at 4.9x with 10/51 positions = expected return 0.96 = 4% house edge
 export const multipliers: MultiplierMap = {
   'black': 1.9 * HyperParams.MULTIPLIER_FACTORS.black,
   'white': 1.9 * HyperParams.MULTIPLIER_FACTORS.white,
   'even': 1.8 * HyperParams.MULTIPLIER_FACTORS.even,
   'odd': 1.8 * HyperParams.MULTIPLIER_FACTORS.odd,
-  'green': 6.5 * HyperParams.MULTIPLIER_FACTORS.green,
-  'pink': 6.5 * HyperParams.MULTIPLIER_FACTORS.pink,
+  'green': 4.9 * HyperParams.MULTIPLIER_FACTORS.green,   // Was 6.5x, reduced to prevent farming
+  'pink': 4.9 * HyperParams.MULTIPLIER_FACTORS.pink,     // Was 6.5x, reduced to prevent farming
   'gold': (position: WheelPosition) => {
     // Random multiplier for gold with weighted probabilities
     const multipliers = [50, 100, 150, 200];
@@ -167,8 +169,8 @@ export const multipliers: MultiplierMap = {
     
     return weightedRandom(multipliers, weights) * HyperParams.MULTIPLIER_FACTORS.gold;
   },
-  'x': 1.0 * HyperParams.MULTIPLIER_FACTORS.x,
-  'number': 30 * HyperParams.MULTIPLIER_FACTORS.number,
+  'x': 24 * HyperParams.MULTIPLIER_FACTORS.x,  // Same as number bet; 1x refund for non-X bets is handled in RouletteGame.tsx
+  'number': 24 * HyperParams.MULTIPLIER_FACTORS.number,  // Was 30x, reduced to prevent half-wheel coverage
 };
 
 // Track win/loss streaks for compensation mechanisms

@@ -57,6 +57,9 @@ const WHEEL_NUMBERS = [
   { number: 37, color: 'white' }
 ];
 
+// Angle per slot - matches client calculation
+const ANGLE_PER_SLOT = 360 / 51;
+
 // Server epoch - all time calculations based on this
 const SERVER_EPOCH = Date.now();
 
@@ -110,7 +113,7 @@ function generateOuterColorsForRound(roundNumber) {
 }
 
 // Calculate current game state based on global clock
-// Server sends TIMING + RESULT only, client animates locally
+// Server sends ABSOLUTE TIMESTAMPS for precise client sync
 function getGameState() {
   const now = Date.now();
   const elapsedSinceStart = Math.floor((now - SERVER_EPOCH) / 1000);
@@ -118,24 +121,31 @@ function getGameState() {
   const roundNumber = Math.floor(elapsedSinceStart / TOTAL_ROUND_TIME) + 1;
   const elapsedInRound = elapsedSinceStart % TOTAL_ROUND_TIME;
   
-  // Round start time - clients calculate everything from this
+  // Round start time (absolute)
   const roundStartTime = SERVER_EPOCH + ((roundNumber - 1) * TOTAL_ROUND_TIME * 1000);
   
+  // ABSOLUTE phase boundary timestamps
+  const bettingEndsAt = roundStartTime + (TIMER_CONFIG.bettingDuration * 1000);
+  const lockEndsAt = bettingEndsAt + (TIMER_CONFIG.lockedDuration * 1000);
+  const spinEndsAt = lockEndsAt + (TIMER_CONFIG.spinDuration * 1000);
+  const resultEndsAt = spinEndsAt + (TIMER_CONFIG.resultDuration * 1000);
+  
+  // Determine current phase and when it ends
   let phase;
-  let displayTime;
+  let phaseEndsAt;
   
   if (elapsedInRound < TIMER_CONFIG.bettingDuration) {
     phase = elapsedInRound >= 180 ? 'warning' : 'betting';
-    displayTime = TIMER_CONFIG.bettingDuration - elapsedInRound;
+    phaseEndsAt = bettingEndsAt;
   } else if (elapsedInRound < TIMER_CONFIG.bettingDuration + TIMER_CONFIG.lockedDuration) {
     phase = 'locked';
-    displayTime = TIMER_CONFIG.bettingDuration + TIMER_CONFIG.lockedDuration - elapsedInRound;
+    phaseEndsAt = lockEndsAt;
   } else if (elapsedInRound < TIMER_CONFIG.bettingDuration + TIMER_CONFIG.lockedDuration + TIMER_CONFIG.spinDuration) {
     phase = 'spinning';
-    displayTime = TIMER_CONFIG.bettingDuration + TIMER_CONFIG.lockedDuration + TIMER_CONFIG.spinDuration - elapsedInRound;
+    phaseEndsAt = spinEndsAt;
   } else {
     phase = 'result';
-    displayTime = TOTAL_ROUND_TIME - elapsedInRound;
+    phaseEndsAt = resultEndsAt;
   }
   
   // Deterministic winning position based on round
@@ -146,22 +156,31 @@ function getGameState() {
   // Outer colors for this round (deterministic)
   const { colors: outerColors, goldPosition, goldMultiplier } = generateOuterColorsForRound(roundNumber);
   
-  // NO rotation calculation here - client does smooth animation locally!
+  // Calculate target angle - where wheel will stop
+  // Extra rotations for visual effect + final position
+  const extraRotations = 6; // Visual spins
+  const pocketAngle = ANGLE_PER_SLOT;
+  const segmentCenterAngle = (winningIndex + 0.5) * pocketAngle;
+  const targetAngle = (extraRotations * 360) + (360 - segmentCenterAngle);
   
   return {
-    // Timing data - clients sync from this
+    // Server time for offset calculation
     serverTime: now,
-    serverEpoch: SERVER_EPOCH,
-    roundStartTime, // Client calculates timer + animation from this
-    
-    // Game state
     roundNumber,
     phase,
-    displayTime,
     
-    // Result (deterministic, same for all clients)
+    // ABSOLUTE timestamps (clients sync from these)
+    roundStartTime,
+    phaseEndsAt,
+    spinStartAt: lockEndsAt,  // When spin phase begins
+    resultAt: spinEndsAt,      // When result phase begins (wheel must stop here)
+    
+    // Winning data
     winningIndex,
     winningPosition,
+    targetAngle, // Final wheel rotation angle
+    
+    // Colors
     outerColors,
     goldPosition,
     goldMultiplier,
