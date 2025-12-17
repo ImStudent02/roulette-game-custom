@@ -30,9 +30,14 @@ const BetHistory = ({ history, className = '' }: BetHistoryProps) => {
     return 'bg-gray-500 text-white';
   };
   
-  // Format a timestamp nicely
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  // Format a timestamp nicely - handles both Date objects and ISO strings from localStorage
+  const formatTime = (date: Date | string) => {
+    try {
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+      return dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return '--:--';
+    }
   };
   
   // Format numbers with commas for readability
@@ -82,49 +87,42 @@ const BetHistory = ({ history, className = '' }: BetHistoryProps) => {
   }
   
   return (
-    <div className={`${className} glass-card p-5`}>
-      <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+    <div className={`${className} glass-card p-3 sm:p-5`}>
+      <h3 className="text-base sm:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2">
         <span className="w-2 h-2 rounded-full bg-gradient-to-br from-[#d4af37] to-[#b8860b]"></span>
-        Bet History
+        History
       </h3>
       
-      <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+      <div className="space-y-2 max-h-48 sm:max-h-64 overflow-y-auto pr-1">
         {history.map(item => (
-          <div key={item.id} className="bg-black/40 rounded-lg p-3 flex items-center justify-between border border-[#d4af37]/20">
-            <div className="flex items-center">
-              {/* Bet type indicator */}
-              <div className={`w-3 h-3 rounded-full mr-2 ${
-                getBetColor(item.betType, item.targetNumber).includes('white') 
-                  ? 'bg-white' 
-                  : 'bg-black'
-              }`}></div>
-              
-              <div>
-                <div className="text-white font-semibold flex items-center">
-                  {getBetTitle(item)}
-                  <span className="text-xs text-gray-500 ml-2">{formatTime(item.timestamp)}</span>
-                </div>
-                <div className="text-sm text-gray-400">
-                  Bet: {formatNumber(item.amount)}
-                </div>
+          <div key={item.id} className="bg-black/40 rounded-lg p-2 sm:p-3 flex items-center gap-2 sm:gap-3 border border-[#d4af37]/20">
+            {/* Bet type indicator */}
+            <div className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full flex-shrink-0 ${
+              getBetColor(item.betType, item.targetNumber).includes('white') 
+                ? 'bg-white' 
+                : 'bg-black'
+            }`}></div>
+            
+            {/* Bet info */}
+            <div className="min-w-0 flex-1">
+              <div className="text-sm sm:text-base text-white font-semibold truncate">
+                {getBetTitle(item)}
+              </div>
+              <div className="text-[10px] sm:text-xs text-gray-500">
+                {formatNumber(item.amount)} • {formatTime(item.timestamp)}
               </div>
             </div>
             
             {/* Outcome */}
-            <div>{getOutcomeText(item)}</div>
+            <div className="text-xs sm:text-sm flex-shrink-0">{getOutcomeText(item)}</div>
             
-            {/* Winning position info */}
-            <div className="text-right">
-              <div className="text-white text-sm font-medium">
-                Result:
-              </div>
-              <div className={`
-                inline-flex items-center justify-center 
-                w-6 h-6 text-xs font-bold rounded-full
-                ${item.position.color === 'black' ? 'bg-black text-white' : 'bg-white text-black'}
-              `}>
-                {item.position.number}
-              </div>
+            {/* Result */}
+            <div className={`
+              inline-flex items-center justify-center flex-shrink-0
+              w-5 h-5 sm:w-6 sm:h-6 text-[10px] sm:text-xs font-bold rounded-full
+              ${item.position.color === 'black' ? 'bg-black text-white border border-white/20' : 'bg-white text-black'}
+            `}>
+              {item.position.number}
             </div>
           </div>
         ))}

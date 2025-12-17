@@ -1,4 +1,4 @@
-import LiveRouletteGame from '@/components/roulette/LiveRouletteGame';
+import LiveRouletteGameV2 from '@/components/roulette/LiveRouletteGameV2';
 
 export const metadata = {
   title: 'LIVE Wheel | Roulette',
@@ -6,5 +6,6 @@ export const metadata = {
 };
 
 export default function LivePage() {
-  return <LiveRouletteGame />;
+  return <LiveRouletteGameV2 />;
 }
+

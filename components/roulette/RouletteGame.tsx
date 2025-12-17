@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Bet, GameState, WheelPosition, BetHistoryItem } from '@/lib/types';
-import { isBetWinner, multipliers, applyCheatCode, shouldSpinTwice, generateBetId } from '@/lib/gameUtils';
+import { isBetWinner, multipliers, applyCheatCode, generateBetId } from '@/lib/gameUtils';
 import RouletteWheel from './RouletteWheel';
 import BettingTable from './BettingTable';
 import ActiveBets from './ActiveBets';
@@ -41,20 +41,11 @@ const initialState: GameState = {
 
 const RouletteGame = () => {
   const [gameState, setGameState] = useState<GameState>(initialState);
-  const [spinTwice, setSpinTwice] = useState(false);
   const [cheatInput, setCheatInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [showingResults, setShowingResults] = useState(false);
-  
-  // Check if any gold bet exceeds 1000 to trigger the double ball
-  useEffect(() => {
-    const goldBet = gameState.currentBets.find(bet => bet.type === 'gold');
-    if (goldBet && shouldSpinTwice(goldBet.amount)) {
-      setSpinTwice(true);
-    } else {
-      setSpinTwice(false);
-    }
-  }, [gameState.currentBets]);
+  const [lastResult, setLastResult] = useState<WheelPosition | null>(null);
+  const [shouldRegenerateColors, setShouldRegenerateColors] = useState(false);
   
   // Compute total bets amount (memoized)
   const totalBetAmount = useMemo(() => {
@@ -86,12 +77,25 @@ const RouletteGame = () => {
     });
   }, []);
   
-  const handleSpinComplete = useCallback((position: WheelPosition, secondPosition?: WheelPosition) => {
+  const handleSpinComplete = useCallback((position: WheelPosition) => {
     setShowingResults(true);
     
+    // After 5 seconds: move result to lastResult, clear center display, regenerate colors
     const resultTimeoutId = setTimeout(() => {
       setShowingResults(false);
-    }, 3000);
+      setLastResult(position); // Move current result to "last result"
+      
+      // Clear winning position to hide center display and allow idle spin
+      setGameState(prev => ({
+        ...prev,
+        winningPosition: undefined,
+      }));
+      
+      // Trigger color regeneration with animation
+      setShouldRegenerateColors(true);
+      // Reset the trigger after a short delay
+      setTimeout(() => setShouldRegenerateColors(false), 100);
+    }, 5000);
 
     setGameState(prev => {
       let totalWinnings = 0;
@@ -113,21 +117,11 @@ const RouletteGame = () => {
           winAmount += bet.amount * multiplier;
           totalWinnings += winAmount;
           betWon = true;
-        }
-        
-        if (secondPosition && isBetWinner(bet, secondPosition)) {
-          let multiplier: number;
-          
-          if (typeof multipliers[bet.type] === 'function') {
-            multiplier = (multipliers[bet.type] as any)(secondPosition);
-          } else {
-            multiplier = multipliers[bet.type] as number;
-          }
-          
-          const secondWinAmount = bet.amount * multiplier;
-          winAmount += secondWinAmount;
-          totalWinnings += secondWinAmount;
-          betWon = true;
+        } else if (position.number === 'X' && bet.type !== 'x') {
+          // Special X rule: if result is X but bet was NOT for X, refund the bet (1x)
+          winAmount = bet.amount; // Return the original bet
+          totalWinnings += winAmount;
+          betWon = true; // Treat as a "win" (refund)
         }
         
         newBetHistory.push({
@@ -143,7 +137,7 @@ const RouletteGame = () => {
       });
       
       // Add position to history (limited to 10 items for performance)
-      const newWheelHistory = [position, ...(secondPosition ? [secondPosition] : []), ...prev.history];
+      const newWheelHistory = [position, ...prev.history];
       if (newWheelHistory.length > 10) {
         newWheelHistory.splice(10);
       }
@@ -159,7 +153,6 @@ const RouletteGame = () => {
         balance: prev.balance + totalWinnings,
         currentBets: [],
         winningPosition: position,
-        secondWinningPosition: secondPosition,
         isSpinning: false,
         lastWinnings: totalWinnings,
         history: newWheelHistory,
@@ -177,7 +170,6 @@ const RouletteGame = () => {
       ...prev,
       isSpinning: true,
       winningPosition: undefined,
-      secondWinningPosition: undefined,
       lastWinnings: 0,
     }));
   }, [gameState.currentBets.length, gameState.isSpinning, showingResults]);
@@ -262,6 +254,20 @@ const RouletteGame = () => {
                 <span className="hidden xs:inline">LIVE</span>
                 <span className="xs:hidden">🔴</span>
               </a>
+              <a 
+                href="/story"
+                className="px-2 py-1 sm:px-4 sm:py-2 bg-gradient-to-r from-[#b45309] to-[#92400e] text-white text-xs sm:text-sm font-bold rounded-full hover:shadow-lg hover:shadow-[#fbbf24]/30 transition-all flex items-center gap-1 sm:gap-2"
+              >
+                <span>🥭</span>
+                <span className="hidden sm:inline">Story</span>
+              </a>
+              <a 
+                href="/rules"
+                className="px-2 py-1 sm:px-4 sm:py-2 bg-gradient-to-r from-[#4b5563] to-[#374151] text-white text-xs sm:text-sm font-bold rounded-full hover:shadow-lg hover:shadow-white/10 transition-all flex items-center gap-1 sm:gap-2"
+              >
+                <span>📜</span>
+                <span className="hidden sm:inline">Rules</span>
+              </a>
             </div>
             
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -304,14 +310,120 @@ const RouletteGame = () => {
       <main className="max-w-7xl mx-auto px-2 sm:px-4 py-4 sm:py-8">
         {/* Wheel Section */}
         <section className="mb-6 sm:mb-10">
-          <div className="flex justify-center">
+          <div className="flex flex-col items-center">
             <RouletteWheel 
               onSpinComplete={handleSpinComplete} 
               isSpinning={gameState.isSpinning}
               winningPosition={gameState.winningPosition}
-              secondWinningPosition={gameState.secondWinningPosition}
-              spinTwice={spinTwice}
+              shouldRegenerateColors={shouldRegenerateColors}
             />
+            
+            {/* Last Result Badge - Premium Style */}
+            {lastResult && !showingResults && (
+              <div 
+                className="mt-6 animate-fade-in"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(30,20,15,0.95) 0%, rgba(20,15,10,0.98) 100%)',
+                  border: '2px solid rgba(212, 175, 55, 0.4)',
+                  borderRadius: '16px',
+                  padding: '12px 20px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
+                }}
+              >
+                <div className="flex items-center gap-4">
+                  {/* Result Number Circle */}
+                  <div 
+                    className="relative"
+                    style={{
+                      width: '56px',
+                      height: '56px',
+                    }}
+                  >
+                    {/* Outer glow ring based on outer color */}
+                    <div 
+                      className="absolute inset-0 rounded-full animate-pulse"
+                      style={{
+                        background: (lastResult as any).outerColor === 'gold' 
+                          ? 'radial-gradient(circle, rgba(251,191,36,0.4) 0%, transparent 70%)'
+                          : (lastResult as any).outerColor === 'green'
+                          ? 'radial-gradient(circle, rgba(34,197,94,0.4) 0%, transparent 70%)'
+                          : (lastResult as any).outerColor === 'pink'
+                          ? 'radial-gradient(circle, rgba(236,72,153,0.4) 0%, transparent 70%)'
+                          : (lastResult as any).outerColor === 'red'
+                          ? 'radial-gradient(circle, rgba(239,68,68,0.4) 0%, transparent 70%)'
+                          : 'none',
+                        transform: 'scale(1.3)',
+                      }}
+                    />
+                    {/* Number circle */}
+                    <div 
+                      className="absolute inset-0 rounded-full flex items-center justify-center font-bold text-lg"
+                      style={{
+                        background: lastResult.color === 'black' 
+                          ? 'linear-gradient(145deg, #2a2a2a 0%, #0a0a0a 100%)' 
+                          : 'linear-gradient(145deg, #f5f5f5 0%, #d0d0d0 100%)',
+                        color: lastResult.color === 'black' ? '#fff' : '#000',
+                        border: '3px solid rgba(212, 175, 55, 0.6)',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                      }}
+                    >
+                      {lastResult.number}
+                    </div>
+                  </div>
+                  
+                  {/* Result Info */}
+                  <div className="flex flex-col gap-1">
+                    <span 
+                      className="text-[10px] uppercase tracking-wider"
+                      style={{ color: 'rgba(212, 175, 55, 0.7)' }}
+                    >
+                      Last Winner
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {/* Inner color badge */}
+                      <span 
+                        className="px-2 py-0.5 rounded text-xs font-semibold uppercase"
+                        style={{
+                          background: lastResult.color === 'black' 
+                            ? 'rgba(0,0,0,0.8)' 
+                            : 'rgba(255,255,255,0.9)',
+                          color: lastResult.color === 'black' ? '#fff' : '#000',
+                          border: '1px solid rgba(255,255,255,0.2)',
+                        }}
+                      >
+                        {lastResult.color}
+                      </span>
+                      
+                      {/* Outer color badge (if special) */}
+                      {(lastResult as any).outerColor && (lastResult as any).outerColor !== 'none' && (
+                        <span 
+                          className="px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide"
+                          style={{
+                            background: (lastResult as any).outerColor === 'gold' 
+                              ? 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)'
+                              : (lastResult as any).outerColor === 'green'
+                              ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
+                              : (lastResult as any).outerColor === 'pink'
+                              ? 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)'
+                              : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                            color: (lastResult as any).outerColor === 'gold' ? '#000' : '#fff',
+                            boxShadow: (lastResult as any).outerColor === 'gold' 
+                              ? '0 0 12px rgba(251,191,36,0.5)'
+                              : (lastResult as any).outerColor === 'green'
+                              ? '0 0 12px rgba(34,197,94,0.5)'
+                              : (lastResult as any).outerColor === 'pink'
+                              ? '0 0 12px rgba(236,72,153,0.5)'
+                              : '0 0 12px rgba(239,68,68,0.5)',
+                          }}
+                        >
+                          ✨ {(lastResult as any).outerColor}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </section>
         

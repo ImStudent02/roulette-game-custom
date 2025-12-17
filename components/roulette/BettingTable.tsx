@@ -203,7 +203,7 @@ const BettingTable = ({
           >
             <span className="flex flex-col items-center gap-1">
               <span>🟢 Green</span>
-              <span className="text-xs opacity-80">6.5x</span>
+              <span className="text-xs opacity-80">4.9x</span>
             </span>
           </button>
           
@@ -220,7 +220,7 @@ const BettingTable = ({
           >
             <span className="flex flex-col items-center gap-1">
               <span>🩷 Pink</span>
-              <span className="text-xs opacity-80">6.5x</span>
+              <span className="text-xs opacity-80">4.9x</span>
             </span>
           </button>
           
@@ -265,7 +265,7 @@ const BettingTable = ({
         <h3 className="text-white text-sm font-semibold mb-4 uppercase tracking-wider flex items-center gap-2 opacity-90">
           <span className="w-2 h-2 rounded-full bg-gradient-to-br from-[#d4af37] to-[#b8860b]"></span>
           Bet on Number
-          <span className="ml-auto text-xs font-normal text-[#d4af37]">30x Payout</span>
+          <span className="ml-auto text-xs font-normal text-[#d4af37]">24x Payout</span>
         </h3>
         
         <div className="grid grid-cols-5 xs:grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-1 sm:gap-1.5">

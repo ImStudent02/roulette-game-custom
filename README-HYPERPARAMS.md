@@ -25,14 +25,14 @@ All hyperparameters are defined in the `lib/hyperParams.ts` file. To change the 
 ```typescript
 // Probability weights for different outcomes (higher = more likely)
 export const COLOR_WEIGHTS = {
-  black: 1.0,  // Weight for black outcomes
-  white: 1.0,  // Weight for white outcomes
+  black: 1.0, // Weight for black outcomes
+  white: 1.0, // Weight for white outcomes
 };
 
 // Probability adjustment for number types
 export const NUMBER_WEIGHTS = {
-  even: 1.0,   // Weight for even numbers
-  odd: 1.0,    // Weight for odd numbers
+  even: 1.0, // Weight for even numbers
+  odd: 1.0, // Weight for odd numbers
 };
 ```
 
@@ -46,11 +46,11 @@ Setting these values higher than 1.0 increases the chance of that outcome, while
 ```typescript
 // Special outcome probabilities
 export const SPECIAL_OUTCOME_WEIGHTS = {
-  x: 0.5,      // Lower value = rarer X outcome
-  gold: 0.2,   // Probability weight for gold (lower = rarer)
-  green: 0.5,  // Probability weight for green outcomes
-  pink: 0.5,   // Probability weight for pink outcomes
-  red: 0.5,    // Probability weight for red outcomes
+  x: 0.5, // Lower value = rarer X outcome
+  gold: 0.2, // Probability weight for gold (lower = rarer)
+  green: 0.5, // Probability weight for green outcomes
+  pink: 0.5, // Probability weight for pink outcomes
+  red: 0.5, // Probability weight for red outcomes
 };
 ```
 
@@ -58,8 +58,32 @@ These control how likely special color outcomes are in the additional wheel. The
 
 ### Multiplier Adjustments
 
+The **base multipliers** are defined in `lib/gameUtils.ts` and are designed for anti-exploit:
+
 ```typescript
-// Multiplier adjustment factors (higher = more generous payouts)
+// Current base multipliers (in gameUtils.ts)
+export const multipliers = {
+  black: 1.9, // 25/51 positions = ~7% house edge
+  white: 1.9, // 25/51 positions = ~7% house edge
+  even: 1.8, // 25/51 positions = ~12% house edge
+  odd: 1.8, // 25/51 positions = ~12% house edge
+  green: 4.9, // 5/51 positions = ~4% house edge (was 6.5x)
+  pink: 4.9, // 5/51 positions = ~4% house edge (was 6.5x)
+  gold: 50 - 200, // Variable, rare
+  x: 1.0, // Refund only
+  number: 24, // 1/51 positions = ~53% house edge (was 30x)
+};
+```
+
+**Why these values?**
+
+- **Number at 24x**: Prevents "half-wheel coverage" exploit. Betting on 25 numbers costs 25 units, wins 24 units = house edge.
+- **Green/Pink at 4.9x**: With 10/51 combined positions, expected return is 0.96 = 4% house edge.
+
+The `MULTIPLIER_FACTORS` in hyperParams.ts are applied ON TOP of these base values:
+
+```typescript
+// Multiplier adjustment factors (applied to base values)
 export const MULTIPLIER_FACTORS = {
   black: 1.0,
   white: 1.0,
@@ -73,20 +97,20 @@ export const MULTIPLIER_FACTORS = {
 };
 ```
 
-These factors multiply the base payout for each bet type. For example:
+For example:
 
-- `MULTIPLIER_FACTORS.number = 1.5` - Increase number bet payouts by 50%
-- `MULTIPLIER_FACTORS.gold = 0.8` - Reduce gold bet payouts by 20%
+- `MULTIPLIER_FACTORS.number = 1.25` would make number bets pay 24 × 1.25 = 30x
+- `MULTIPLIER_FACTORS.green = 0.8` would make green bets pay 4.9 × 0.8 = 3.92x
 
 ### Gold Multiplier Distribution
 
 ```typescript
 // Gold multiplier probabilities (adjust frequency of each payout)
 export const GOLD_MULTIPLIER_WEIGHTS = {
-  50: 4,    // 40% chance (4/10)
-  100: 3,   // 30% chance (3/10)
-  150: 2,   // 20% chance (2/10)
-  200: 1,   // 10% chance (1/10)
+  50: 4, // 40% chance (4/10)
+  100: 3, // 30% chance (3/10)
+  150: 2, // 20% chance (2/10)
+  200: 1, // 10% chance (1/10)
 };
 ```
 
@@ -106,9 +130,9 @@ Controls the overall house advantage across all bet types. Higher values make th
 ```typescript
 // Parameters for wheel generation
 export const WHEEL_GENERATION = {
-  blackNumbersCount: 25,  // Number of black positions on wheel
-  whiteNumbersCount: 25,  // Number of white positions on wheel
-  shuffleIntensity: 1.0,  // How thoroughly to shuffle numbers (0.0-1.0)
+  blackNumbersCount: 25, // Number of black positions on wheel
+  whiteNumbersCount: 25, // Number of white positions on wheel
+  shuffleIntensity: 1.0, // How thoroughly to shuffle numbers (0.0-1.0)
 };
 ```
 
@@ -132,14 +156,14 @@ When set to `true`, the game uses all the probability weights defined. When `fal
 // Win streak compensation (anti-streak mechanism)
 export const WIN_STREAK_COMPENSATION = {
   enabled: true,
-  maxStreakLength: 5,     // After this many consecutive wins, increase losing chance
+  maxStreakLength: 5, // After this many consecutive wins, increase losing chance
   compensationFactor: 0.2, // How much to increase losing probability
 };
 
 // Loss streak compensation (anti-streak mechanism)
 export const LOSS_STREAK_COMPENSATION = {
   enabled: true,
-  maxStreakLength: 8,      // After this many consecutive losses, increase winning chance
+  maxStreakLength: 8, // After this many consecutive losses, increase winning chance
   compensationFactor: 0.15, // How much to increase winning probability
 };
 ```
@@ -154,9 +178,9 @@ These parameters prevent long winning or losing streaks by subtly adjusting prob
 ```typescript
 // Magic numbers for adding special behaviors
 export const MAGIC_NUMBERS = {
-  luckyNumber: 7,         // This number has slightly higher chance of appearing
+  luckyNumber: 7, // This number has slightly higher chance of appearing
   luckyNumberBoost: 0.05, // 5% boost in probability for lucky number
-  unluckyNumber: 13,      // This number has slightly lower chance of appearing
+  unluckyNumber: 13, // This number has slightly lower chance of appearing
   unluckyNumberPenalty: 0.05, // 5% reduction in probability
 };
 ```
@@ -194,8 +218,8 @@ export const MULTIPLIER_FACTORS = {
 
 export const LOSS_STREAK_COMPENSATION = {
   enabled: true,
-  maxStreakLength: 4,       // Kick in sooner (after 4 losses instead of 8)
-  compensationFactor: 0.3,  // Higher compensation (30% chance instead of 15%)
+  maxStreakLength: 4, // Kick in sooner (after 4 losses instead of 8)
+  compensationFactor: 0.3, // Higher compensation (30% chance instead of 15%)
 };
 
 export const HOUSE_EDGE = 0.03; // Lower house edge (3% instead of 5%)
@@ -218,8 +242,8 @@ export const MULTIPLIER_FACTORS = {
 
 export const WIN_STREAK_COMPENSATION = {
   enabled: true,
-  maxStreakLength: 3,       // Kick in sooner (after 3 wins instead of 5)
-  compensationFactor: 0.3,  // Higher compensation (30% chance instead of 20%)
+  maxStreakLength: 3, // Kick in sooner (after 3 wins instead of 5)
+  compensationFactor: 0.3, // Higher compensation (30% chance instead of 20%)
 };
 
 export const HOUSE_EDGE = 0.08; // Higher house edge (8% instead of 5%)
@@ -229,21 +253,21 @@ export const HOUSE_EDGE = 0.08; // Higher house edge (8% instead of 5%)
 
 ```typescript
 export const SPECIAL_OUTCOME_WEIGHTS = {
-  x: 0.3,      // Make X much rarer
-  gold: 0.4,   // Make gold more common
-  green: 0.5,  
-  pink: 0.5,   
-  red: 0.5,    
+  x: 0.3, // Make X much rarer
+  gold: 0.4, // Make gold more common
+  green: 0.5,
+  pink: 0.5,
+  red: 0.5,
 };
 
 export const GOLD_MULTIPLIER_WEIGHTS = {
-  50: 1,    // 10% chance (extreme payouts more common)
-  100: 2,   // 20% chance
-  150: 3,   // 30% chance
-  200: 4,   // 40% chance
+  50: 1, // 10% chance (extreme payouts more common)
+  100: 2, // 20% chance
+  150: 3, // 30% chance
+  200: 4, // 40% chance
 };
 ```
 
 ## Advanced Usage
 
-For more complex behavior modifications, you can directly edit the game logic in `lib/gameUtils.ts`. The hyperparameter system is designed to be extensible, so feel free to add new parameters as needed. 
+For more complex behavior modifications, you can directly edit the game logic in `lib/gameUtils.ts`. The hyperparameter system is designed to be extensible, so feel free to add new parameters as needed.
