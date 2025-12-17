@@ -11,7 +11,6 @@ A web-based roulette game with unique rules, additional wheel mechanics, and vir
 ## Features
 
 - **Main Wheel**: 51 numbers (1-50 + X) with Black & White positioning
-- **Additional Wheel**: Green, Pink, Gold, and Red positions with special rules
 - **Betting Options**: Black/White, Even/Odd, Green/Pink, Gold, X, and specific numbers
 - **Multipliers**: Carefully balanced to ensure house edge on all bet types
 - **Gold Mystery**: Gold multiplier is hidden (50x - 200x) until result!
