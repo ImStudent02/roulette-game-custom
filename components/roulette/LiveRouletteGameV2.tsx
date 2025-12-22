@@ -23,8 +23,12 @@ const TIMER_CONFIG = {
 };
 
 // WebSocket URL - connects to custom server on /ws path (avoids Next.js HMR conflict)
+// In production (Railway/Render), use wss:// with no port (uses 443)
+// In development, use ws://localhost:3001
 const WS_URL = typeof window !== 'undefined' 
-  ? `ws://${window.location.hostname}:3001/ws`
+  ? window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'ws://localhost:3001/ws'  // Local development
+    : `wss://${window.location.host}/ws`  // Production (Railway, Render, etc.)
   : 'ws://localhost:3001/ws';
 
 const LiveRouletteGameV2 = () => {
