@@ -4,7 +4,8 @@ const next = require('next');
 const { WebSocketServer, WebSocket } = require('ws');
 
 const dev = process.env.NODE_ENV !== 'production';
-const hostname = 'localhost';
+// In production, bind to 0.0.0.0 to accept external connections (Railway, Render, etc.)
+const hostname = dev ? 'localhost' : '0.0.0.0';
 const port = parseInt(process.env.PORT || '3001', 10); // Live mode on 3001
 
 const app = next({ dev, hostname, port });
@@ -330,9 +331,10 @@ app.prepare().then(() => {
   // Start game loop
   startGameLoop();
 
-  server.listen(port, () => {
+  server.listen(port, hostname, () => {
     console.log(`> Live server ready on http://${hostname}:${port}`);
-    console.log(`> WebSocket ready on ws://${hostname}:${port}`);
+    console.log(`> WebSocket ready on ws://${hostname}:${port}/ws`);
+    console.log(`> Environment: ${dev ? 'development' : 'production'}`);
     console.log(`> Server epoch: ${SERVER_EPOCH}`);
   });
 });
