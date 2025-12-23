@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { Bet, BetHistoryItem, WheelPosition } from '@/lib/types';
-import { generateBetId } from '@/lib/gameUtils';
+import { Bet, BetHistoryItem, WheelPosition, BetType } from '@/lib/types';
+import { generateBetId, multipliers } from '@/lib/gameUtils';
 import RouletteWheel from './RouletteWheel'; // Use original wheel with smooth animation
 import BettingTable from './BettingTable';
 import ActiveBets from './ActiveBets';
@@ -85,6 +85,12 @@ const LiveRouletteGameV2 = () => {
   // Update display time every second using interval
   useEffect(() => {
     const updateTimer = () => {
+      // Don't calculate if we don't have valid data yet
+      if (!phaseEndsAt || phaseEndsAt === 0) {
+        setDisplayTime(0);
+        return;
+      }
+      
       const nowServer = Date.now() + serverOffset;
       const remaining = Math.max(0, Math.floor((phaseEndsAt - nowServer) / 1000));
       setDisplayTime(remaining);
@@ -93,10 +99,10 @@ const LiveRouletteGameV2 = () => {
     // Update immediately
     updateTimer();
     
-    // Update every second
-    const interval = setInterval(updateTimer, 1000);
+    // Update every 500ms for smoother transitions (not just 1 second)
+    const interval = setInterval(updateTimer, 500);
     return () => clearInterval(interval);
-  }, [phaseEndsAt, serverOffset]);
+  }, [phaseEndsAt, serverOffset, phase, roundNumber]); // Added phase and roundNumber to dependencies
   
   // Track if we need to trigger a spin
   const [shouldRegenerateGold, setShouldRegenerateGold] = useState(false);
@@ -162,26 +168,78 @@ const LiveRouletteGameV2 = () => {
   // Calculate results when round ends
   useEffect(() => {
     if (phase === 'result' && roundNumber > lastProcessedRound && winningPosition && currentBets.length > 0) {
-      // Process bets
+      // Process bets with PROPER win checking for all bet types
       let totalWinnings = 0;
       const newBetHistory: BetHistoryItem[] = [];
       
+      // Get outer color if available (for green/pink/gold bets)
+      const outerColor = serverOuterColors[winningIndex] || 'none';
+      
       currentBets.forEach(bet => {
-        // Simple win check - match color or number
         let betWon = false;
         let winAmount = 0;
         
-        if (bet.type === 'black' && winningPosition.color === 'black') {
-          betWon = true;
-          winAmount = bet.amount * 1.9;
-        } else if (bet.type === 'white' && winningPosition.color === 'white') {
-          betWon = true;
-          winAmount = bet.amount * 1.9;
-        } else if (bet.type === 'number' && bet.targetNumber === winningPosition.number) {
-          betWon = true;
-          winAmount = bet.amount * 24; // Was 30x, reduced to 24x to prevent exploits
+        // Proper win check based on bet type
+        switch (bet.type) {
+          case 'black':
+            betWon = winningPosition.color === 'black';
+            if (betWon) winAmount = bet.amount * 1.9;
+            break;
+            
+          case 'white':
+            betWon = winningPosition.color === 'white';
+            if (betWon) winAmount = bet.amount * 1.9;
+            break;
+            
+          case 'even':
+            // Only numeric positions can be even (not 'X')
+            if (typeof winningPosition.number === 'number') {
+              betWon = winningPosition.number % 2 === 0;
+              if (betWon) winAmount = bet.amount * 1.8;
+            }
+            break;
+            
+          case 'odd':
+            // Only numeric positions can be odd (not 'X')
+            if (typeof winningPosition.number === 'number') {
+              betWon = winningPosition.number % 2 === 1;
+              if (betWon) winAmount = bet.amount * 1.8;
+            }
+            break;
+            
+          case 'green':
+            betWon = outerColor === 'green';
+            if (betWon) winAmount = bet.amount * 4.9;
+            break;
+            
+          case 'pink':
+            betWon = outerColor === 'pink';
+            if (betWon) winAmount = bet.amount * 4.9;
+            break;
+            
+          case 'gold':
+            betWon = outerColor === 'gold';
+            if (betWon) winAmount = bet.amount * serverGoldMultiplier;
+            break;
+            
+          case 'x':
+            // X bet wins when the wheel lands on 'X'
+            betWon = winningPosition.number === 'X';
+            if (betWon) winAmount = bet.amount * 24;
+            break;
+            
+          case 'number':
+            // Number bet - IMPORTANT: proper type comparison
+            // bet.targetNumber is always a number, winningPosition.number can be number | string
+            if (typeof winningPosition.number === 'number' && typeof bet.targetNumber === 'number') {
+              betWon = winningPosition.number === bet.targetNumber;
+              if (betWon) winAmount = bet.amount * 24;
+            }
+            break;
+            
+          default:
+            betWon = false;
         }
-        // Add more bet type checks as needed
         
         if (betWon) {
           totalWinnings += winAmount;
@@ -205,7 +263,7 @@ const LiveRouletteGameV2 = () => {
       setCurrentBets([]);
       setLastProcessedRound(roundNumber);
     }
-  }, [phase, roundNumber, lastProcessedRound, winningPosition, currentBets]);
+  }, [phase, roundNumber, lastProcessedRound, winningPosition, currentBets, serverOuterColors, winningIndex, serverGoldMultiplier]);
   
   // Handle spin complete
   const handleSpinComplete = useCallback((position: WheelPosition) => {

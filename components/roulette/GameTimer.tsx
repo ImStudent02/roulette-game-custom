@@ -128,6 +128,14 @@ const GameTimer = ({ timeRemaining, phase, totalTime }: GameTimerProps) => {
           </span>
         </div>
       )}
+      
+      {phase === 'result' && timeRemaining === 0 && (
+        <div className="mt-3 text-center">
+          <span className="inline-block px-4 py-2 bg-green-500/30 border border-green-500/50 rounded-lg text-green-300 text-sm font-bold animate-pulse">
+            🔄 Next round starting...
+          </span>
+        </div>
+      )}
     </div>
   );
 };
