@@ -1,10 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  //output: "export", // for static export
   eslint: {
-    ignoreDuringBuilds: true, // ✅ proper way
+    ignoreDuringBuilds: true,
   },
+  // Allow .onion domains for Tor hidden service access in dev mode
+  allowedDevOrigins: [
+    'http://*.onion',
+  ],
 };
 
 export default nextConfig;
