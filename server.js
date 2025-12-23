@@ -4,11 +4,11 @@ const next = require('next');
 const { WebSocketServer, WebSocket } = require('ws');
 
 const dev = process.env.NODE_ENV !== 'production';
-// In production, bind to 0.0.0.0 to accept external connections (Railway, Render, etc.)
-const hostname = dev ? 'localhost' : '0.0.0.0';
-const port = parseInt(process.env.PORT || '3001', 10); // Live mode on 3001
+// Bind to 0.0.0.0 to accept connections from localhost, 127.0.0.1, and external (Tor, LAN, etc.)
+const hostname = '0.0.0.0';
+const port = parseInt(process.env.PORT || '3001', 10);
 
-const app = next({ dev, hostname, port });
+const app = next({ dev, hostname: 'localhost', port }); // Next.js uses localhost for internal routing
 const handle = app.getRequestHandler();
 
 // ============================================

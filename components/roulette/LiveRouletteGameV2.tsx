@@ -22,14 +22,31 @@ const TIMER_CONFIG = {
   resultDuration: 60,     // 60s result display
 };
 
-// WebSocket URL - connects to custom server on /ws path (avoids Next.js HMR conflict)
-// In production (Railway/Render), use wss:// with no port (uses 443)
-// In development, use ws://localhost:3001
-const WS_URL = typeof window !== 'undefined' 
-  ? window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'ws://localhost:3001/ws'  // Local development
-    : `wss://${window.location.host}/ws`  // Production (Railway, Render, etc.)
-  : 'ws://localhost:3001/ws';
+// WebSocket URL - SECURE BY DEFAULT
+// - Always use wss:// (encrypted) except:
+//   - localhost/127.0.0.1: ws:// (local development, no SSL needed)
+//   - .onion: ws:// (Tor provides end-to-end encryption, no SSL certs for onion)
+const getWebSocketUrl = (): string => {
+  if (typeof window === 'undefined') return 'ws://localhost:3001/ws';
+  
+  const host = window.location.hostname;
+  const port = window.location.port;
+  
+  // Local development - use actual host (localhost OR 127.0.0.1)
+  if (host === 'localhost' || host === '127.0.0.1') {
+    return `ws://${host}:${port || '3001'}/ws`;
+  }
+  
+  // Tor hidden service - Tor handles encryption, ws:// is secure
+  if (host.endsWith('.onion')) {
+    return `ws://${window.location.host}/ws`;
+  }
+  
+  // Everything else - SECURE by default (wss://)
+  return `wss://${window.location.host}/ws`;
+};
+
+const WS_URL = getWebSocketUrl();
 
 const LiveRouletteGameV2 = () => {
   // Auth state
