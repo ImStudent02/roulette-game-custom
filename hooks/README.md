@@ -1,17 +1,28 @@
 # Hooks Directory
 
-Custom React hooks.
+## Purpose
 
-## useWebSocket.ts
+This directory contains **custom React hooks** that encapsulate reusable stateful logic for the application.
 
-WebSocket hook for real-time server communication.
+## Hooks
+
+| Hook           | File              | Description                             |
+| -------------- | ----------------- | --------------------------------------- |
+| `useWebSocket` | `useWebSocket.ts` | WebSocket connection for live game sync |
+| `useAuth`      | `useAuth.tsx`     | Authentication state management         |
+
+---
+
+## useWebSocket
+
+Real-time WebSocket hook for live multiplayer game communication.
 
 ### Usage
 
 ```tsx
 const {
   isConnected, // Boolean - connection status
-  gameState, // Server game state (phase, timer, winning number, etc.)
+  gameState, // Server game state (phase, timer, winning number)
   chatMessages, // Array of chat messages
   authenticate, // (username, displayName) => void
   placeBet, // (bet) => void
@@ -32,7 +43,7 @@ interface GameState {
   displayTime: number;
   winningIndex: number;
   winningPosition: { number: number | string; color: string };
-  outerColors: string[]; // For synced gold position
+  outerColors: string[]; // Synced gold position
   goldPosition: number;
   goldMultiplier: number;
 }
@@ -43,3 +54,38 @@ interface GameState {
 - Auto-reconnect on disconnect (3s delay)
 - `isClosing` flag prevents reconnect during unmount
 - URL stored in ref to prevent dependency loops
+
+---
+
+## useAuth
+
+Authentication hook managing user login state and credentials.
+
+### Usage
+
+```tsx
+const {
+  isAuthenticated, // Boolean - logged in status
+  user, // User object or null
+  isLoading, // Boolean - checking auth status
+  login, // (email, password) => Promise
+  register, // (email, password, name) => Promise
+  logout, // () => void
+  updateBalance, // (newBalance) => void
+} = useAuth();
+```
+
+### Features
+
+- JWT token management (localStorage)
+- Automatic token validation on mount
+- Balance state synchronization
+- Dual currency mode support (trial/real)
+
+---
+
+## Related
+
+- `server.js` - WebSocket server implementation
+- `lib/auth.ts` - Server-side auth utilities
+- `components/ui/AuthModal.tsx` - Auth UI component

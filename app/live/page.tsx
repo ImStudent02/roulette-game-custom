@@ -1,11 +1,11 @@
-import LiveRouletteGameV2 from '@/components/roulette/LiveRouletteGameV2';
+import LiveRouletteGameV3 from '@/components/roulette/LiveRouletteGameV3';
 
 export const metadata = {
   title: 'LIVE Wheel | Roulette',
-  description: 'Play LIVE Roulette with auto-spin timer and real-time betting',
+  description: 'Play LIVE Roulette with 4-currency system - Trial mangos or real betting!',
 };
 
 export default function LivePage() {
-  return <LiveRouletteGameV2 />;
+  return <LiveRouletteGameV3 />;
 }
 

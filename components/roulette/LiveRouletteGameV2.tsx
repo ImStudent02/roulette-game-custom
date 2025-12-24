@@ -14,12 +14,12 @@ import { useWebSocket, GameState as ServerGameState } from '@/hooks/useWebSocket
 
 type GamePhase = 'betting' | 'warning' | 'locked' | 'spinning' | 'result';
 
-// Timer configuration (in seconds) - matches server
+// Timer configuration (in seconds) - matches server.js
 const TIMER_CONFIG = {
   bettingDuration: 210,   // 3:30 betting
-  lockedDuration: 15,     // 15s countdown suspense
+  lockedDuration: 30,     // 30s lock for server processing
   spinDuration: 15,       // 15s wheel spin
-  resultDuration: 60,     // 60s result display
+  resultDuration: 45,     // 45s result display
 };
 
 // WebSocket URL - SECURE BY DEFAULT
@@ -271,6 +271,7 @@ const LiveRouletteGameV2 = () => {
           winAmount: betWon ? winAmount : 0,
           timestamp: new Date(),
           position: winningPosition,
+          currencyMode: 'trial', // Default for V2 which doesn't support dual currency
         });
       });
       
@@ -551,8 +552,7 @@ const LiveRouletteGameV2 = () => {
                 <BettingTable 
                   onPlaceBet={addBet}
                   balance={balance}
-                  isSpinning={!canBet}
-                />
+                  isSpinning={!canBet} currencyMode={'trial'}                />
               </div>
               
               {/* Active Bets & History */}

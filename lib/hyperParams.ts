@@ -94,4 +94,46 @@ export const ANIMATION = {
 export const HOUSE_EDGE = {
   target: 0.05,           // Target house edge (5%)
   varianceAllowed: 0.02   // Allowed variance in house edge (±2%)
+};
+
+// ============================================
+// Currency System Configuration
+// ============================================
+
+export const CURRENCY_CONFIG = {
+  // Signup bonus (trial currency)
+  SIGNUP_BONUS_FERMENTED: 100,
+  
+  // Conversion rates
+  EXPIRED_JUICE_TO_REAL_JUICE: 100000, // 100,000 expired → 100 real juice
+  EXPIRED_JUICE_OUTPUT: 100,            // Output amount for conversion
+  MANGO_JUICE_TO_MANGO: 1,              // 1:1 conversion
+  MANGO_JUICE_TO_USD: 1000,             // 1000 juice = 1 USD
+  
+  // Top-up packages
+  TOPUP_PACKAGES: [
+    { id: 'pack_0.9', usd: 0.9, baseMangos: 900, bonusPercent: 0 },
+    { id: 'pack_4.9', usd: 4.9, baseMangos: 4900, bonusPercent: 0 },
+    { id: 'pack_9.9', usd: 9.9, baseMangos: 9900, bonusPercent: 1 },
+    { id: 'pack_49.9', usd: 49.9, baseMangos: 49900, bonusPercent: 2.5 },
+    { id: 'pack_99.9', usd: 99.9, baseMangos: 99900, bonusPercent: 5 },
+    { id: 'pack_499.9', usd: 499.9, baseMangos: 499900, bonusPercent: 10 },
+    { id: 'pack_999.9', usd: 999.9, baseMangos: 999900, bonusPercent: 15 },
+  ],
+  
+  // Limits
+  MIN_WITHDRAW_JUICE: 100,
+  MIN_CONVERT_JUICE: 100, // Minimum juice to convert to mangos
+  MIN_BET_AMOUNT: 1,
+};
+
+// ============================================
+// Session Configuration
+// ============================================
+
+export const SESSION_CONFIG = {
+  COOKIE_NAME: 'r_session',
+  COOKIE_MAX_AGE_DAYS: 30,
+  OTP_EXPIRY_MINUTES: 10,
+  OTP_LENGTH: 6,
 }; 

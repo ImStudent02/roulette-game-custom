@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase, getCollections } from '@/lib/db';
+import { cookies } from 'next/headers';
+import { getUserByUsername, getUserByEmail, updateUser } from '@/lib/dbManager';
 import {
-  encryptEmail,
   verifyPassword,
   generatePasswordSalt,
-  generateToken,
+  generateSessionToken,
+  generateSessionId,
+  getSessionCookieOptions,
 } from '@/lib/auth';
+import bcrypt from 'bcryptjs';
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,17 +30,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Connect to database
-    const db = await connectToDatabase();
-    const { users } = getCollections(db);
-
     // Find user by email or username
     let user;
-    if (email) {
-      const encryptedEmail = encryptEmail(email);
-      user = await users.findOne({ email: encryptedEmail });
+    if (username) {
+      // Username login (must start with @)
+      const normalizedUsername = username.startsWith('@') ? username : `@${username}`;
+      user = await getUserByUsername(normalizedUsername);
     } else {
-      user = await users.findOne({ username });
+      // Email login
+      user = await getUserByEmail(email.toLowerCase().trim());
     }
 
     if (!user) {
@@ -47,17 +48,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user has password (might be Google login only)
+    // Check if user has password
     if (!user.passwordHash) {
       return NextResponse.json(
-        { error: 'Please use Google login for this account' },
+        { error: 'Account setup incomplete. Please reset your password.' },
         { status: 401 }
       );
     }
 
     // Verify password
-    const salt = generatePasswordSalt(user.signupTime, user.username);
-    const isValid = await verifyPassword(password, salt, user.passwordHash);
+    const saltHash = generatePasswordSalt(user.username);
+    const combinedPassword = password + saltHash;
+    const isValid = await bcrypt.compare(combinedPassword, user.passwordHash);
 
     if (!isValid) {
       return NextResponse.json(
@@ -67,15 +69,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Update last login
-    await users.updateOne(
-      { _id: user._id },
-      { $set: { lastLogin: Date.now() } }
-    );
+    await updateUser(user.username, { lastLogin: Date.now() });
 
-    // Generate JWT token
-    const token = generateToken({
+    // Generate session token
+    const sessionId = generateSessionId();
+    const token = generateSessionToken({
       username: user.username,
       displayName: user.displayName,
+      sessionId,
+    });
+
+    // Set session cookie
+    const cookieOptions = getSessionCookieOptions();
+    const cookieStore = await cookies();
+    cookieStore.set(cookieOptions.name, token, {
+      httpOnly: cookieOptions.httpOnly,
+      secure: cookieOptions.secure,
+      sameSite: cookieOptions.sameSite,
+      maxAge: cookieOptions.maxAge,
+      path: cookieOptions.path,
     });
 
     return NextResponse.json({
@@ -84,7 +96,10 @@ export async function POST(request: NextRequest) {
       user: {
         username: user.username,
         displayName: user.displayName,
-        balance: user.balance,
+        fermentedMangos: user.fermentedMangos,
+        expiredJuice: user.expiredJuice,
+        mangos: user.mangos,
+        mangoJuice: user.mangoJuice,
         totalWins: user.totalWins,
         totalLosses: user.totalLosses,
       },

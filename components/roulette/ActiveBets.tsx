@@ -86,11 +86,11 @@ const ActiveBets = ({
   isSpinning = false, 
   className = '' 
 }: ActiveBetsProps) => {
-  // Use onRemoveBet if provided, otherwise use removeBet
   const handleRemoveBet = onRemoveBet || removeBet;
   
-  // Calculate total amount bet
-  const totalAmount = bets.reduce((total, bet) => total + bet.amount, 0);
+  // Calculate total amount bet per currency
+  const totalReal = bets.filter(b => b.currencyMode === 'real').reduce((sum, b) => sum + b.amount, 0);
+  const totalTrial = bets.filter(b => b.currencyMode !== 'real').reduce((sum, b) => sum + b.amount, 0);
   
   if (bets.length === 0) {
     return (
@@ -111,8 +111,13 @@ const ActiveBets = ({
           <span className="w-2 h-2 rounded-full bg-gradient-to-br from-[#d4af37] to-[#b8860b]"></span>
           Active Bets
         </h3>
-        <div className="text-sm sm:text-base text-white">
-          Total: <span className="font-bold text-[#d4af37]">{formatNumber(totalAmount)}</span>
+        <div className="text-xs sm:text-sm text-white flex flex-col items-end gap-0.5">
+          {totalReal > 0 && (
+            <span>🥭 <span className="font-bold text-green-400">{formatNumber(totalReal)}</span></span>
+          )}
+          {totalTrial > 0 && (
+            <span>🍋 <span className="font-bold text-yellow-400">{formatNumber(totalTrial)}</span></span>
+          )}
         </div>
       </div>
       
@@ -149,7 +154,10 @@ const ActiveBets = ({
               </div>
               
               <div className="flex-shrink-0 ml-2">
-                <div className="text-sm sm:text-base text-white text-right font-medium">{amount}</div>
+                <div className="text-sm sm:text-base text-white text-right font-medium flex items-center justify-end gap-1">
+                  {amount.toLocaleString()}
+                  <span className="text-xs">{bet.currencyMode === 'real' ? '🥭' : '🍋'}</span>
+                </div>
                 <div className="text-[10px] sm:text-xs text-[#d4af37] text-right">
                   {isGoldBet ? 'Win: 50x - 200x' : `Win: ${formatNumber(potentialWin)}`}
                 </div>

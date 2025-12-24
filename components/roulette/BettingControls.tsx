@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, memo, useCallback } from 'react';
-import { Bet, BetType } from '@/lib/types';
+import { Bet, BetType, CurrencyMode } from '@/lib/types';
 import { generateBetId, multipliers } from '@/lib/gameUtils';
 
 type BettingControlsProps = {
   addBet: (bet: Bet) => void;
   balance: number;
   isSpinning: boolean;
+  currencyMode: CurrencyMode;
   className?: string;
 };
 
@@ -15,6 +16,7 @@ const BettingControls = ({
   addBet,
   balance,
   isSpinning,
+  currencyMode,
   className = '',
 }: BettingControlsProps) => {
   const [betAmount, setBetAmount] = useState<number>(10);
@@ -55,11 +57,12 @@ const BettingControls = ({
       id: generateBetId(),
       type: betType,
       amount: betAmount,
+      currencyMode, // Track which currency this bet uses
       ...(betType === 'number' && targetNumber ? { targetNumber } : {}),
     };
     
     addBet(bet);
-  }, [addBet, betAmount, betType, balance, isSpinning, targetNumber]);
+  }, [addBet, betAmount, betType, balance, isSpinning, targetNumber, currencyMode]);
   
   // Show multiplier for current bet type
   const currentMultiplier = typeof multipliers[betType] === 'function' 

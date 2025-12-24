@@ -109,7 +109,7 @@ const BetHistory = ({ history, className = '' }: BetHistoryProps) => {
                 {getBetTitle(item)}
               </div>
               <div className="text-[10px] sm:text-xs text-gray-500">
-                {formatNumber(item.amount)} • {formatTime(item.timestamp)}
+                {formatNumber(item.amount)} {item.currencyMode === 'real' ? '🥭' : '🍋'} • {formatTime(item.timestamp)}
               </div>
             </div>
             

@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useState } from 'react';
-import { Bet, BetType } from '@/lib/types';
+import { Bet, BetType, CurrencyMode } from '@/lib/types';
 import { generateBetId } from '@/lib/gameUtils';
 import { WHEEL_NUMBERS } from './RouletteWheel';
 
@@ -9,6 +9,8 @@ type BettingTableProps = {
   onPlaceBet: (bet: Bet) => void;
   balance: number;
   isSpinning: boolean;
+  currencyMode: CurrencyMode;
+  maxBet?: number; // Server-defined max bet limit
   className?: string;
 };
 
@@ -16,8 +18,12 @@ const BettingTable = ({
   onPlaceBet,
   balance,
   isSpinning,
+  currencyMode,
+  maxBet,
   className = '',
 }: BettingTableProps) => {
+  // Calculate actual max (min of balance and server limit)
+  const actualMax = maxBet ? Math.min(balance, maxBet) : balance;
   const [betAmount, setBetAmount] = useState<number>(10);
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null);
 
@@ -28,6 +34,7 @@ const BettingTable = ({
       id: generateBetId(),
       type,
       amount: betAmount,
+      currencyMode, // Track which currency this bet uses
       ...(type === 'number' && targetNumber ? { targetNumber } : {}),
     };
     
@@ -48,7 +55,14 @@ const BettingTable = ({
   };
   
   const handleAllIn = () => {
-    setBetAmount(balance);
+    setBetAmount(actualMax);
+  };
+  
+  // Format large numbers for chip display
+  const formatChipValue = (value: number): string => {
+    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `${Math.floor(value / 1000)}K`;
+    return value.toString();
   };
 
   // Chip configurations with colors and styles
@@ -89,26 +103,36 @@ const BettingTable = ({
             </button>
           ))}
           
+          {/* Max Bet Chip - shows actual value instead of ALL IN */}
           <button
             onClick={handleAllIn}
-            disabled={isSpinning || balance <= 0}
+            disabled={isSpinning || actualMax <= 0}
             className={`
               chip w-11 h-11 sm:w-14 sm:h-14 rounded-full font-bold
               bg-gradient-to-br from-red-500 to-red-700 text-white
-              flex flex-col items-center justify-center text-[10px] sm:text-xs leading-tight
+              flex items-center justify-center text-[9px] sm:text-[11px] leading-tight
+              ${betAmount === actualMax ? 'ring-2 sm:ring-3 ring-white ring-offset-1 sm:ring-offset-2 ring-offset-[#155939] scale-110' : ''}
               ${isSpinning ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110'}
               transition-all duration-200
             `}
+            title={`Max bet: ${actualMax.toLocaleString()}`}
           >
-            <span>ALL</span>
-            <span>IN</span>
+            {formatChipValue(actualMax)}
           </button>
         </div>
         
-        <div className="mt-4 flex items-center gap-2">
-          <span className="text-white/60 text-sm">Selected:</span>
-          <span className="font-bold text-[#d4af37] text-lg">{betAmount}</span>
-          <span className="text-white/60 text-sm">chips</span>
+        {/* Selected amount and max bet display */}
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm">
+          <div className="flex items-center gap-1">
+            <span className="text-white/60">Selected:</span>
+            <span className="font-bold text-[#d4af37] text-lg">{betAmount.toLocaleString()}</span>
+          </div>
+          {maxBet && (
+            <div className="flex items-center gap-1 text-white/50">
+              <span>Max:</span>
+              <span className="font-medium text-white/70">{maxBet.toLocaleString()}</span>
+            </div>
+          )}
         </div>
       </div>
       

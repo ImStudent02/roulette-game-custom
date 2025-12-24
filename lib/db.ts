@@ -7,15 +7,48 @@ const DB_NAME = 'R_DB';
 // Type definitions for collections
 export interface UserDocument {
   _id?: string;
-  email: string; // Encrypted
-  passwordHash?: string; // Optional for Google login
+  email: string; // AES encrypted with custom key
+  passwordHash?: string; // hash(passHash + saltHash)
   username: string; // Unique, starts with @, max 20 chars
   displayName: string; // Max 30 chars, emojis allowed
-  balance: number;
+  dob: string; // YYYY-MM-DD format for encryption key
+  // Trial currencies
+  fermentedMangos: number; // Starting: 100, cannot withdraw
+  expiredJuice: number; // Winnings from trial bets
+  // Real currencies
+  mangos: number; // Bought with USD
+  mangoJuice: number; // Real winnings, withdrawable
+  // Stats
   totalWins: number;
   totalLosses: number;
+  totalDeposited: number; // USD value
+  totalWithdrawn: number; // USD value
   signupTime: number; // Long timestamp
   lastLogin: number; // Long timestamp
+  isVerified: boolean; // Email verified
+}
+
+export interface OTPDocument {
+  _id?: string;
+  email: string; // Plain email for lookup
+  otp: string; // 6-digit code
+  purpose: 'signup' | 'login' | 'reset';
+  createdAt: number;
+  expiresAt: number;
+  attempts: number; // Max 3 attempts
+  used: boolean;
+}
+
+export interface TransactionDocument {
+  _id?: string;
+  username: string;
+  type: 'topup' | 'withdraw' | 'bet' | 'win' | 'loss' | 'convert';
+  currency: 'fermentedMango' | 'expiredJuice' | 'mango' | 'mangoJuice' | 'usd';
+  amount: number;
+  balanceAfter: number;
+  timestamp: number;
+  roundNumber?: number;
+  details?: string;
 }
 
 export interface ChatDocument {
@@ -98,6 +131,16 @@ async function createIndexes(database: Db): Promise<void> {
   const bets = database.collection('bets');
   await bets.createIndex({ roundNumber: 1, username: 1 });
   await bets.createIndex({ username: 1 });
+  
+  // OTP collection indexes
+  const otp = database.collection('otp');
+  await otp.createIndex({ email: 1, purpose: 1 });
+  await otp.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // TTL index
+  
+  // Transactions collection indexes
+  const transactions = database.collection('transactions');
+  await transactions.createIndex({ username: 1, timestamp: -1 });
+  await transactions.createIndex({ timestamp: -1 });
 }
 
 // Get typed collections
@@ -107,6 +150,8 @@ export function getCollections(database: Db) {
     chat: database.collection<ChatDocument>('chat'),
     rounds: database.collection<RoundDocument>('rounds'),
     bets: database.collection<BetDocument>('bets'),
+    otp: database.collection<OTPDocument>('otp'),
+    transactions: database.collection<TransactionDocument>('transactions'),
   };
 }
 

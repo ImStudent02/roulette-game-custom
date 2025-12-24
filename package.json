@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "start": "NODE_ENV=production node server.js",
-    "dev": "node server.js",
-    "dev:simple": "next dev"
+    "start": "NODE_ENV=production node server-v2.js",
+    "dev": "node server-v2.js",
+    "dev:simple": "next dev",
+    "dev:old": "node server.js"
   },
   "dependencies": {
     "@types/uuid": "^10.0.0",

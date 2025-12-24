@@ -2,12 +2,12 @@
 
 import { NextResponse } from 'next/server';
 
-// Timer configuration (in seconds) - MUST match client
+// Timer configuration (in seconds) - MUST match server.js
 const TIMER_CONFIG = {
-  bettingDuration: 210,     // 3 minutes 30 seconds betting
-  lockedDuration: 20,       // 20 seconds suspense (betting locked)
-  spinDuration: 10,         // 10 seconds spin animation
-  resultDuration: 60,       // 60 seconds result display
+  bettingDuration: 210,     // 3:30 betting
+  lockedDuration: 30,       // 30s lock for server processing (extended)
+  spinDuration: 15,         // 15s spin animation
+  resultDuration: 45,       // 45s result display
 };
 
 const TOTAL_ROUND_TIME = 

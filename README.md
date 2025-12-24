@@ -16,7 +16,8 @@ A web-based roulette game with unique rules, additional wheel mechanics, and vir
 - **Gold Mystery**: Gold multiplier is hidden (50x - 200x) until result!
 - **Live Mode**: Real-time multiplayer with synchronized wheel and chat
 - **Story Mode**: "The House of the Mango Devil" 🥭 - with TTS narration
-- **Virtual Currency**: Starting balance, winnings, and cheat codes
+- **Dual Currency**: Real (🥭 Mangos) and Trial (🍋 Fermented Mangos)
+- **House Protection**: Smart outcome selection and dynamic bet limits
 
 ## Game Modes
 
@@ -31,6 +32,28 @@ Multiplayer with synchronized wheel:
 - Timer-based rounds (3:30 betting, 15s locked, 15s spin, 60s result)
 - All players see same wheel, same gold position, same result
 - Real-time chat
+- Dynamic bet limits based on house exposure
+
+## Environment Setup
+
+Copy `.env.example` to `.env` and configure:
+
+```bash
+cp .env.example .env
+```
+
+Required variables:
+
+| Variable      | Description               | Default                              |
+| ------------- | ------------------------- | ------------------------------------ |
+| `MONGODB_URI` | MongoDB connection string | `mongodb://localhost:27017/roulette` |
+| `PORT`        | Server port               | `3001`                               |
+| `NODE_ENV`    | Environment               | `development`                        |
+
+Optional:
+
+- `GEMINI_API_KEY` - For AI chatbot
+- `JWT_SECRET` - For token auth (future)
 
 ## Running the Game
 
@@ -38,25 +61,47 @@ Multiplayer with synchronized wheel:
 # Install dependencies
 npm install
 
-# Self Mode only (standard Next.js)
+# Live Mode (with house protection & WebSocket)
 npm run dev
 
-# Live Mode (with WebSocket server on port 3001)
-npm run dev:live
+# Self Mode only (Next.js without WebSocket)
+npm run dev:simple
 ```
+
+### NPM Scripts
+
+| Command              | Description                                      |
+| -------------------- | ------------------------------------------------ |
+| `npm run dev`        | Live mode with `server-v2.js` (house protection) |
+| `npm run start`      | Production mode                                  |
+| `npm run dev:simple` | Next.js only (no WebSocket)                      |
+| `npm run dev:old`    | Old server.js (backup)                           |
+| `npm run build`      | Build for production                             |
 
 ## Directory Structure
 
 ```
 roulette-game/
 ├── app/              # Next.js pages and API routes
+│   ├── admin/        # Admin dashboard
+│   ├── auth/admin/   # Admin login
+│   ├── payment/      # Payment flow
+│   ├── topup/        # Package selection
+│   └── api/admin/    # Admin APIs
 ├── components/       # React UI components
 │   ├── roulette/     # Game components (wheel, betting, chat)
-│   └── ui/           # General UI (auth modal)
+│   └── ui/           # General UI (auth modal, wallet)
 ├── hooks/            # Custom React hooks (useWebSocket)
 ├── lib/              # Utilities, types, auth, database
+├── logs/             # Server log files
 ├── public/           # Static assets
-└── server.js         # WebSocket server for Live Mode
+├── server/           # Server modules (modular architecture)
+│   ├── config.cjs    # Game configuration
+│   ├── gameState.cjs # Round timing
+│   ├── betProcessor.cjs # Bet handling
+│   ├── houseProtection.cjs # Smart selection
+│   └── logger.cjs    # File logging
+└── server-v2.js      # WebSocket server
 ```
 
 Each directory has its own `README.md` with detailed documentation.
@@ -79,18 +124,7 @@ Each directory has its own `README.md` with detailed documentation.
 
 ### Anti-Exploit Design 🛡️
 
-Multipliers are **mathematically designed** to ensure the house always has an edge, even if players try "coverage betting" strategies:
-
-**Example: Betting on 25 numbers (half the wheel)**
-
-- Cost: 25 units
-- Win return: 24 units (24x multiplier)
-- Net: **-1 unit per spin** = 4% house edge ✓
-
-**Example: Covering all Green + Pink (10 positions)**
-
-- Expected return: 4.9 × (10/51) = 0.96
-- Net: **4% house edge** ✓
+Multipliers are **mathematically designed** to ensure the house always has an edge, even if players try "coverage betting" strategies.
 
 > "Covering more won't make you smarter." 🎲
 
@@ -100,15 +134,78 @@ Enter the code "@mrmoney" in the cheat code input box to receive 5,000 chips.
 
 ---
 
-## 🚧 Pending Features (Not Yet Implemented)
+## 🛡️ House Protection System
+
+### Dynamic Bet Limits
+
+- Max bet calculated based on house fund and online users
+- Formula: `(HouseFund × RiskPercent) / (OnlineUsers × MaxMultiplier)`
+- Limits broadcast to clients each round
+- Displayed in betting UI
+
+### Smart Outcome Selection
+
+- Analyzes payout for all 51 positions
+- Weights selection toward house-favorable outcomes when exposure is high
+- Aggressiveness scales: Low (<70%), Medium (70-90%), High (>90%)
+- Trial mode farming protection (detects 80%+ trial bets)
+
+---
+
+## 🔐 Admin Panel
+
+Access the admin dashboard to manage users, view logs, and configure game settings.
+
+### Access
+
+1. Go to `/auth/admin`
+2. Login with credentials:
+   - **Username**: `admin`
+   - **Password**: `mango2024`
+3. Dashboard available at `/admin`
+
+### Features
+
+| Tab       | Description                                              |
+| --------- | -------------------------------------------------------- |
+| Dashboard | Stats, online users, house fund, quick actions           |
+| Users     | Search users, change status (active/timeout/suspend/ban) |
+| Logs      | View error/warning/info logs with stack traces           |
+| Settings  | Timer durations, bet limits, protection threshold        |
+
+> **Security**: Sessions expire on browser/tab close. Change default password in production!
+
+---
+
+## � Payment Flow
+
+1. Select package on `/topup`
+2. Click **Confirm** button
+3. Enter card details on `/payment`
+4. Success → Game page | Failure → Back to topup
+
+Card validation: 16 digits, MM/YY expiry, 3-4 digit CVC
+
+---
+
+## 📝 Logging
+
+Server logs are written to `logs/server.log`:
+
+- JSON format with timestamp, level, message, stack
+- Auto-rotation at 5MB (keeps 5 files)
+- Viewable in Admin Panel → Logs tab
+
+---
+
+## 🚧 Pending Features
 
 - [ ] **Two-Ball Gold Rule**: If gold bet exceeds 1000 units, two balls roll together
-- [ ] **Server-Side Betting**: Currently bets are processed client-side only
-- [ ] **Real Money Integration**: Virtual currency only for now
+- [ ] **Real Payment Integration**: Stripe/PayPal (currently demo mode)
 - [ ] **Leaderboards**: Global ranking system
-- [ ] **Cinematic Story Images**: AI-generated images for story mode (assets exist in `public/img/`)
+- [ ] **Cinematic Story Images**: AI-generated images for story mode
 
-Open-source contributions are welcome! Even the smallest help will be acknowledged in the final release.
+Open-source contributions are welcome!
 
 ## License
 

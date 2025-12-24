@@ -133,6 +133,7 @@ const RouletteGame = () => {
           winAmount: betWon ? winAmount : 0,
           timestamp: new Date(),
           position: position,
+          currencyMode: 'trial', // Default for local play mode
         });
       });
       
@@ -435,6 +436,7 @@ const RouletteGame = () => {
               onPlaceBet={addBet} 
               balance={gameState.balance} 
               isSpinning={gameState.isSpinning}
+              currencyMode="trial"
             />
           </div>
           

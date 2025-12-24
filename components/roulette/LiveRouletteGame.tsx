@@ -13,13 +13,13 @@ import AuthModal from '../ui/AuthModal';
 
 type GamePhase = 'betting' | 'warning' | 'locked' | 'spinning' | 'result';
 
-// Timer configuration (in seconds) - matches server
+// Timer configuration (in seconds) - matches server.js
 const TIMER_CONFIG = {
   bettingDuration: 210,
   warningStart: 180,
-  lockedDuration: 20,
-  spinDuration: 10,
-  resultDuration: 60,
+  lockedDuration: 30,     // 30s lock for server processing
+  spinDuration: 15,       // 15s spin
+  resultDuration: 45,     // 45s result display
 };
 
 // Initial game state
@@ -243,6 +243,7 @@ const LiveRouletteGame = () => {
           winAmount: betWon ? winAmount : 0,
           timestamp: new Date(),
           position: winPosition,
+          currencyMode: 'trial', // Default to trial for local play mode
         });
       });
       
@@ -459,6 +460,7 @@ const LiveRouletteGame = () => {
                   onPlaceBet={addBet}
                   balance={gameState.balance}
                   isSpinning={!canBet}
+                  currencyMode="trial"
                 />
               </div>
               

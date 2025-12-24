@@ -45,6 +45,7 @@ export function useWebSocket(url: string) {
   const messageHandlers = useRef<Set<MessageHandler>>(new Set());
   const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
   const isClosing = useRef(false); // Prevent reconnect during intentional close
+  const isMounted = useRef(false);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN || isClosing.current) return;
@@ -114,10 +115,13 @@ export function useWebSocket(url: string) {
 
   // Connect on mount only
   useEffect(() => {
+    isMounted.current = true;
     urlRef.current = url;
+    isClosing.current = false; // Reset on mount
     connect();
 
     return () => {
+      isMounted.current = false;
       isClosing.current = true; // Mark as intentional close
       if (reconnectTimeout.current) {
         clearTimeout(reconnectTimeout.current);
@@ -129,6 +133,41 @@ export function useWebSocket(url: string) {
     };
   }, []); // Only run on mount/unmount
 
+  // Handle visibility change (back button navigation)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isMounted.current) {
+        // Reset closing flag when page becomes visible
+        isClosing.current = false;
+        
+        // Check if we need to reconnect
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+          console.log('Page visible - reconnecting WebSocket...');
+          connect();
+        }
+      }
+    };
+
+    // Also handle page show event (for back/forward cache)
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted && isMounted.current) {
+        isClosing.current = false;
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+          console.log('Page restored from cache - reconnecting WebSocket...');
+          connect();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pageshow', handlePageShow);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pageshow', handlePageShow);
+    };
+  }, [connect]);
+
   // Send message helper
   const send = useCallback((type: string, data: unknown) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -136,13 +175,17 @@ export function useWebSocket(url: string) {
     }
   }, []);
 
-  // Authenticate
-  const authenticate = useCallback((username: string, displayName: string) => {
-    send('auth', { username, displayName });
+  // Authenticate with optional balance data
+  const authenticate = useCallback((
+    username: string, 
+    displayName: string, 
+    options?: { balance?: Record<string, number>; currencyType?: 'trial' | 'real' }
+  ) => {
+    send('auth', { username, displayName, ...options });
   }, [send]);
 
   // Place bet
-  const placeBet = useCallback((bet: { type: string; amount: number; targetNumber?: number }) => {
+  const placeBet = useCallback((bet: { type: string; amount: number; targetNumber?: number; currencyMode?: 'trial' | 'real' }) => {
     send('placeBet', bet);
   }, [send]);
 
