@@ -1,6 +1,7 @@
 'use client';
 
 import { memo } from 'react';
+import Image from 'next/image';
 import { Bet, WheelPosition } from '@/lib/types';
 import { multipliers } from '@/lib/gameUtils';
 import { WHEEL_NUMBERS } from './RouletteWheel';
@@ -113,10 +114,16 @@ const ActiveBets = ({
         </h3>
         <div className="text-xs sm:text-sm text-white flex flex-col items-end gap-0.5">
           {totalReal > 0 && (
-            <span>🥭 <span className="font-bold text-green-400">{formatNumber(totalReal)}</span></span>
+            <span className="flex items-center gap-1">
+              <Image src="/mango.svg" alt="Mango" width={14} height={14} />
+              <span className="font-bold text-green-400">{formatNumber(totalReal)}</span>
+            </span>
           )}
           {totalTrial > 0 && (
-            <span>🍋 <span className="font-bold text-yellow-400">{formatNumber(totalTrial)}</span></span>
+            <span className="flex items-center gap-1">
+              <Image src="/rotten-mango.svg" alt="Trial" width={14} height={14} />
+              <span className="font-bold text-yellow-400">{formatNumber(totalTrial)}</span>
+            </span>
           )}
         </div>
       </div>
@@ -156,7 +163,7 @@ const ActiveBets = ({
               <div className="flex-shrink-0 ml-2">
                 <div className="text-sm sm:text-base text-white text-right font-medium flex items-center justify-end gap-1">
                   {amount.toLocaleString()}
-                  <span className="text-xs">{bet.currencyMode === 'real' ? '🥭' : '🍋'}</span>
+                  <Image src={bet.currencyMode === 'real' ? '/mango.svg' : '/rotten-mango.svg'} alt="" width={12} height={12} />
                 </div>
                 <div className="text-[10px] sm:text-xs text-[#d4af37] text-right">
                   {isGoldBet ? 'Win: 50x - 200x' : `Win: ${formatNumber(potentialWin)}`}
@@ -170,7 +177,7 @@ const ActiveBets = ({
                   className="ml-2 sm:ml-3 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/40 hover:text-red-300 flex items-center justify-center transition-colors text-xs sm:text-sm"
                   aria-label="Remove bet"
                 >
-                  ✕
+                  ❌
                 </button>
               )}
             </div>

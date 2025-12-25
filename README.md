@@ -188,6 +188,29 @@ Card validation: 16 digits, MM/YY expiry, 3-4 digit CVC
 
 ---
 
+## 💸 Withdraw Flow
+
+1. Go to **Profile** → Click on **Mango Juice** card
+2. Enter amount on `/withdraw` (min: 100 juice)
+3. Select payment method (PayPal or Bank)
+4. Confirm on `/withdraw/process`
+5. Balance deducted, withdrawal logged
+
+Rate: **1,000 Mango Juice = $1.00 USD**
+
+---
+
+## 🎁 Daily Login Reward
+
+Every 24 hours, logged-in users can claim free trial currency:
+
+- **Base reward**: 100 Fermented Mangos
+- **Streak bonus**: +10% per consecutive day (max 7 days = +70%)
+- Popup appears automatically on `/live` when available
+- API: `GET /api/daily-claim` (check), `POST /api/daily-claim` (claim)
+
+---
+
 ## 📝 Logging
 
 Server logs are written to `logs/server.log`:

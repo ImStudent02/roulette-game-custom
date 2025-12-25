@@ -1,6 +1,7 @@
 'use client';
 
 import { memo } from 'react';
+import Image from 'next/image';
 import { WheelPosition, BetHistoryItem } from '@/lib/types';
 import { WHEEL_NUMBERS } from './RouletteWheel';
 
@@ -108,8 +109,10 @@ const BetHistory = ({ history, className = '' }: BetHistoryProps) => {
               <div className="text-sm sm:text-base text-white font-semibold truncate">
                 {getBetTitle(item)}
               </div>
-              <div className="text-[10px] sm:text-xs text-gray-500">
-                {formatNumber(item.amount)} {item.currencyMode === 'real' ? '🥭' : '🍋'} • {formatTime(item.timestamp)}
+              <div className="text-[10px] sm:text-xs text-gray-500 flex items-center gap-1">
+                {formatNumber(item.amount)}
+                <Image src={item.currencyMode === 'real' ? '/mango.svg' : '/rotten-mango.svg'} alt="" width={10} height={10} />
+                • {formatTime(item.timestamp)}
               </div>
             </div>
             

@@ -13,6 +13,7 @@ import LiveChat from './LiveChat';
 import CurrencyHeader from '../ui/CurrencyHeader';
 import WalletPanel from '../ui/WalletPanel';
 import AuthModalV2 from '../ui/AuthModalV2';
+import DailyClaimPopup from '../ui/DailyClaimPopup';
 import { useWebSocket } from '@/hooks/useWebSocket';
 
 type GamePhase = 'betting' | 'warning' | 'locked' | 'spinning' | 'result';
@@ -81,6 +82,10 @@ export default function LiveRouletteGameV3() {
   
   // Tab state
   const [activeTab, setActiveTab] = useState<'betting' | 'chat' | 'wallet'>('betting');
+  
+  // Daily claim popup
+  const [showDailyClaim, setShowDailyClaim] = useState(false);
+  const [dailyClaimChecked, setDailyClaimChecked] = useState(false);
   
   // WebSocket connection
   const {
@@ -152,6 +157,21 @@ export default function LiveRouletteGameV3() {
       });
     }
   }, [isAuthenticated, user, isConnected, currencyBalance, currencyMode, authenticate]);
+  
+  // Check for daily claim on login
+  useEffect(() => {
+    if (isAuthenticated && !dailyClaimChecked) {
+      setDailyClaimChecked(true);
+      fetch('/api/daily-claim')
+        .then(res => res.json())
+        .then(data => {
+          if (data.canClaim) {
+            setShowDailyClaim(true);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isAuthenticated, dailyClaimChecked]);
   
   // Update display time
   useEffect(() => {
@@ -672,6 +692,19 @@ export default function LiveRouletteGameV3() {
           🥭 Story
         </Link>
       </div>
+      
+      {/* Daily Claim Popup */}
+      {showDailyClaim && (
+        <DailyClaimPopup
+          onClose={() => setShowDailyClaim(false)}
+          onClaimed={(reward) => {
+            setCurrencyBalance(prev => ({
+              ...prev,
+              fermentedMangos: prev.fermentedMangos + reward,
+            }));
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1,0 +1,73 @@
+{"timestamp":"2025-12-25T08:31:47.139Z","level":"info","message":"> Live server ready on http://0.0.0.0:3001","stack":null}
+{"timestamp":"2025-12-25T08:31:47.140Z","level":"info","message":"> WebSocket ready on ws://0.0.0.0:3001/ws","stack":null}
+{"timestamp":"2025-12-25T08:31:47.141Z","level":"info","message":"> Environment: development","stack":null}
+{"timestamp":"2025-12-25T08:31:47.142Z","level":"info","message":"> Server epoch: 1766651499463","stack":null}
+{"timestamp":"2025-12-25T08:31:47.143Z","level":"info","message":"> Timer: betting=210s, locked=30s, spin=15s, result=45s","stack":null}
+{"timestamp":"2025-12-25T08:31:47.143Z","level":"info","message":"> Total round time: 300s (5m 0s)","stack":null}
+{"timestamp":"2025-12-25T08:31:47.197Z","level":"info","message":"> House fund: 50,000,000 mangos ($50,000)","stack":null}
+{"timestamp":"2025-12-25T08:32:20.328Z","level":"info","message":"[WS] Client connected (total: 1)","stack":null}
+{"timestamp":"2025-12-25T08:32:20.644Z","level":"info","message":"[Phase] Round 1: start -> betting","stack":null}
+{"timestamp":"2025-12-25T08:32:52.132Z","level":"info","message":"[DEBUG] [WS] @TestFor disconnected","stack":null}
+{"timestamp":"2025-12-25T08:32:52.134Z","level":"info","message":"[DEBUG] [WS] Client disconnected (remaining: 0)","stack":null}
+{"timestamp":"2025-12-25T08:33:23.228Z","level":"info","message":"[WS] Client connected (total: 1)","stack":null}
+{"timestamp":"2025-12-25T08:33:26.209Z","level":"info","message":"[WS] Client connected (total: 2)","stack":null}
+{"timestamp":"2025-12-25T08:33:32.251Z","level":"info","message":"[DEBUG] [WS] @TestFor disconnected","stack":null}
+{"timestamp":"2025-12-25T08:33:32.255Z","level":"info","message":"[DEBUG] [WS] Client disconnected (remaining: 1)","stack":null}
+{"timestamp":"2025-12-25T08:33:38.019Z","level":"info","message":"[WS] Client connected (total: 2)","stack":null}
+{"timestamp":"2025-12-25T08:33:41.003Z","level":"info","message":"[WS] Client connected (total: 3)","stack":null}
+{"timestamp":"2025-12-25T08:34:40.405Z","level":"info","message":"[Phase] Round 1: betting -> warning","stack":null}
+{"timestamp":"2025-12-25T08:35:09.653Z","level":"info","message":"[Phase] Round 1: warning -> locked","stack":null}
+{"timestamp":"2025-12-25T08:35:09.653Z","level":"info","message":"[Lock] Processing bets for round 1...","stack":null}
+{"timestamp":"2025-12-25T08:35:09.655Z","level":"info","message":"[Round 1] Processing 1 players with bets...","stack":null}
+{"timestamp":"2025-12-25T08:35:09.659Z","level":"info","message":"[Round 1] Processed in 3ms (protected: false)","stack":null}
+{"timestamp":"2025-12-25T08:35:09.663Z","level":"info","message":"[DEBUG] [Round 1] Queued 1 user balance updates for DB","stack":null}
+{"timestamp":"2025-12-25T08:35:39.844Z","level":"info","message":"[Phase] Round 1: locked -> spinning","stack":null}
+{"timestamp":"2025-12-25T08:35:54.955Z","level":"info","message":"[Phase] Round 1: spinning -> result","stack":null}
+{"timestamp":"2025-12-25T08:36:34.421Z","level":"info","message":"[DEBUG] [WS] @TestFor disconnected","stack":null}
+{"timestamp":"2025-12-25T08:36:34.422Z","level":"info","message":"[DEBUG] [WS] Client disconnected (remaining: 2)","stack":null}
+{"timestamp":"2025-12-25T08:36:40.376Z","level":"info","message":"[Phase] Round 2: result -> betting","stack":null}
+{"timestamp":"2025-12-25T08:38:09.684Z","level":"info","message":"[WS] Client connected (total: 3)","stack":null}
+{"timestamp":"2025-12-25T08:38:12.568Z","level":"info","message":"[WS] Client connected (total: 4)","stack":null}
+{"timestamp":"2025-12-25T08:38:25.196Z","level":"info","message":"[DEBUG] [WS] @TestFor disconnected","stack":null}
+{"timestamp":"2025-12-25T08:38:25.197Z","level":"info","message":"[DEBUG] [WS] Client disconnected (remaining: 3)","stack":null}
+{"timestamp":"2025-12-25T08:38:51.098Z","level":"info","message":"[DEBUG] [WS] Client disconnected (remaining: 2)","stack":null}
+{"timestamp":"2025-12-25T08:38:51.104Z","level":"info","message":"[DEBUG] [WS] Client disconnected (remaining: 1)","stack":null}
+{"timestamp":"2025-12-25T08:38:51.111Z","level":"info","message":"[DEBUG] [WS] Client disconnected (remaining: 0)","stack":null}
+{"timestamp":"2025-12-25T08:45:01.699Z","level":"info","message":"[WS] Client connected (total: 1)","stack":null}
+{"timestamp":"2025-12-25T08:45:02.360Z","level":"info","message":"[Phase] Round 3: betting -> warning","stack":null}
+{"timestamp":"2025-12-25T08:45:10.432Z","level":"info","message":"[Phase] Round 3: warning -> locked","stack":null}
+{"timestamp":"2025-12-25T08:45:10.433Z","level":"info","message":"[Lock] Processing bets for round 3...","stack":null}
+{"timestamp":"2025-12-25T08:45:10.434Z","level":"info","message":"[DEBUG] [Round 3] No bets to process","stack":null}
+{"timestamp":"2025-12-25T08:45:15.920Z","level":"info","message":"[DEBUG] [WS] @TestFor disconnected","stack":null}
+{"timestamp":"2025-12-25T08:45:15.922Z","level":"info","message":"[DEBUG] [WS] Client disconnected (remaining: 0)","stack":null}
+{"timestamp":"2025-12-25T08:49:14.247Z","level":"info","message":"[WS] Client connected (total: 1)","stack":null}
+{"timestamp":"2025-12-25T08:49:14.710Z","level":"info","message":"[Phase] Round 4: locked -> betting","stack":null}
+{"timestamp":"2025-12-25T08:49:40.065Z","level":"info","message":"[Phase] Round 4: betting -> warning","stack":null}
+{"timestamp":"2025-12-25T08:49:47.282Z","level":"info","message":"[DEBUG] [WS] @TestFor disconnected","stack":null}
+{"timestamp":"2025-12-25T08:49:47.288Z","level":"info","message":"[DEBUG] [WS] Client disconnected (remaining: 0)","stack":null}
+{"timestamp":"2025-12-25T08:50:22.404Z","level":"info","message":"[WS] Client connected (total: 1)","stack":null}
+{"timestamp":"2025-12-25T08:50:23.358Z","level":"info","message":"[Phase] Round 4: warning -> locked","stack":null}
+{"timestamp":"2025-12-25T08:50:23.361Z","level":"info","message":"[Lock] Processing bets for round 4...","stack":null}
+{"timestamp":"2025-12-25T08:50:23.362Z","level":"info","message":"[DEBUG] [Round 4] No bets to process","stack":null}
+{"timestamp":"2025-12-25T08:50:25.529Z","level":"info","message":"[WS] Client connected (total: 2)","stack":null}
+{"timestamp":"2025-12-25T08:50:33.911Z","level":"info","message":"[DEBUG] [WS] @TestFor disconnected","stack":null}
+{"timestamp":"2025-12-25T08:50:33.912Z","level":"info","message":"[DEBUG] [WS] Client disconnected (remaining: 1)","stack":null}
+{"timestamp":"2025-12-25T08:50:40.098Z","level":"info","message":"[Phase] Round 4: locked -> spinning","stack":null}
+{"timestamp":"2025-12-25T08:50:55.250Z","level":"info","message":"[Phase] Round 4: spinning -> result","stack":null}
+{"timestamp":"2025-12-25T08:51:39.533Z","level":"info","message":"[Phase] Round 5: result -> betting","stack":null}
+{"timestamp":"2025-12-25T08:54:39.659Z","level":"info","message":"[Phase] Round 5: betting -> warning","stack":null}
+{"timestamp":"2025-12-25T08:55:09.911Z","level":"info","message":"[Phase] Round 5: warning -> locked","stack":null}
+{"timestamp":"2025-12-25T08:55:09.912Z","level":"info","message":"[Lock] Processing bets for round 5...","stack":null}
+{"timestamp":"2025-12-25T08:55:09.913Z","level":"info","message":"[DEBUG] [Round 5] No bets to process","stack":null}
+{"timestamp":"2025-12-25T08:55:40.192Z","level":"info","message":"[Phase] Round 5: locked -> spinning","stack":null}
+{"timestamp":"2025-12-25T08:55:55.274Z","level":"info","message":"[Phase] Round 5: spinning -> result","stack":null}
+{"timestamp":"2025-12-25T08:56:39.619Z","level":"info","message":"[Phase] Round 6: result -> betting","stack":null}
+{"timestamp":"2025-12-25T08:58:07.773Z","level":"info","message":"[DEBUG] [WS] Client disconnected (remaining: 0)","stack":null}
+{"timestamp":"2025-12-25T09:10:33.197Z","level":"info","message":"[WS] Client connected (total: 1)","stack":null}
+{"timestamp":"2025-12-25T09:10:34.180Z","level":"info","message":"[Phase] Round 8: betting -> locked","stack":null}
+{"timestamp":"2025-12-25T09:10:34.181Z","level":"info","message":"[Lock] Processing bets for round 8...","stack":null}
+{"timestamp":"2025-12-25T09:10:34.182Z","level":"info","message":"[DEBUG] [Round 8] No bets to process","stack":null}
+{"timestamp":"2025-12-25T09:10:35.836Z","level":"info","message":"[WS] Client connected (total: 2)","stack":null}
+{"timestamp":"2025-12-25T09:10:40.248Z","level":"info","message":"[Phase] Round 8: locked -> spinning","stack":null}
+{"timestamp":"2025-12-25T09:10:55.379Z","level":"info","message":"[Phase] Round 8: spinning -> result","stack":null}
+{"timestamp":"2025-12-25T09:11:40.021Z","level":"info","message":"[Phase] Round 9: result -> betting","stack":null}

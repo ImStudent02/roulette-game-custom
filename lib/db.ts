@@ -26,6 +26,9 @@ export interface UserDocument {
   signupTime: number; // Long timestamp
   lastLogin: number; // Long timestamp
   isVerified: boolean; // Email verified
+  // Daily claim
+  lastDailyClaimAt?: number; // Last daily reward claim timestamp
+  dailyStreak?: number; // Consecutive days claimed
 }
 
 export interface OTPDocument {
@@ -42,7 +45,7 @@ export interface OTPDocument {
 export interface TransactionDocument {
   _id?: string;
   username: string;
-  type: 'topup' | 'withdraw' | 'bet' | 'win' | 'loss' | 'convert';
+  type: 'topup' | 'withdraw' | 'bet' | 'win' | 'loss' | 'convert' | 'daily_claim';
   currency: 'fermentedMango' | 'expiredJuice' | 'mango' | 'mangoJuice' | 'usd';
   amount: number;
   balanceAfter: number;

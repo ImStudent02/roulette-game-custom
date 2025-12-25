@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface UserProfile {
   username: string;
@@ -101,15 +102,15 @@ export default function ProfilePage() {
   const formatDate = (timestamp: number) => new Date(timestamp).toLocaleDateString();
   const formatTime = (timestamp: number) => new Date(timestamp).toLocaleString();
 
-  const getCurrencyIcon = (currency: string) => {
-    const icons: Record<string, string> = {
-      fermentedMango: '🍋',
-      expiredJuice: '🥤',
-      mango: '🥭',
-      mangoJuice: '🧃',
-      usd: '💵',
+  const getCurrencySvg = (currency: string) => {
+    const svgs: Record<string, string> = {
+      fermentedMango: '/rotten-mango.svg',
+      expiredJuice: '/rotten-mango-juce.svg',
+      mango: '/mango.svg',
+      mangoJuice: '/mango-juce.svg',
+      usd: '/mango.svg',
     };
-    return icons[currency] || '💰';
+    return svgs[currency] || '/mango.svg';
   };
 
   const getTransactionColor = (type: string) => {
@@ -175,29 +176,49 @@ export default function ProfilePage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {/* Trial Currencies */}
           <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-yellow-600/30">
-            <div className="text-yellow-400 text-sm mb-1">🍋 Fermented Mango</div>
+            <div className="text-yellow-400 text-sm mb-1 flex items-center gap-1">
+              <Image src="/rotten-mango.svg" alt="" width={16} height={16} />
+              Fermented Mango
+            </div>
             <div className="text-2xl font-bold text-white">{formatNumber(user.fermentedMangos)}</div>
             <div className="text-xs text-gray-500">Trial currency</div>
           </div>
           
           <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-orange-600/30">
-            <div className="text-orange-400 text-sm mb-1">🥤 Expired Juice</div>
+            <div className="text-orange-400 text-sm mb-1 flex items-center gap-1">
+              <Image src="/rotten-mango-juce.svg" alt="" width={16} height={16} />
+              Expired Juice
+            </div>
             <div className="text-2xl font-bold text-white">{formatNumber(user.expiredJuice)}</div>
             <div className="text-xs text-gray-500">Trial winnings</div>
           </div>
 
           {/* Real Currencies */}
           <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-green-600/30">
-            <div className="text-green-400 text-sm mb-1">🥭 Mangos</div>
+            <div className="text-green-400 text-sm mb-1 flex items-center gap-1">
+              <Image src="/mango.svg" alt="" width={16} height={16} />
+              Mangos
+            </div>
             <div className="text-2xl font-bold text-white">{formatNumber(user.mangos)}</div>
             <div className="text-xs text-gray-500">Betting currency</div>
           </div>
           
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-purple-600/30">
-            <div className="text-purple-400 text-sm mb-1">🧃 Mango Juice</div>
+          <Link 
+            href="/withdraw"
+            className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-purple-600/30 hover:border-purple-500 hover:bg-purple-900/30 transition group cursor-pointer block"
+          >
+            <div className="text-purple-400 text-sm mb-1 flex items-center gap-1">
+              <Image src="/mango-juce.svg" alt="" width={16} height={16} />
+              Mango Juice
+            </div>
             <div className="text-2xl font-bold text-white">{formatNumber(user.mangoJuice)}</div>
-            <div className="text-xs text-gray-500">≈ ${(user.mangoJuice / 1000).toFixed(2)}</div>
-          </div>
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-gray-500">≈ ${(user.mangoJuice / 1000).toFixed(2)}</div>
+              <div className="text-xs text-purple-400 opacity-0 group-hover:opacity-100 transition">
+                Withdraw →
+              </div>
+            </div>
+          </Link>
         </div>
 
         {/* Expired Juice Progress */}
@@ -272,7 +293,7 @@ export default function ProfilePage() {
               {transactions.map((tx, i) => (
                 <div key={i} className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg">
                   <div className="flex items-center gap-3">
-                    <span className="text-xl">{getCurrencyIcon(tx.currency)}</span>
+                    <Image src={getCurrencySvg(tx.currency)} alt="" width={24} height={24} />
                     <div>
                       <div className={`font-medium ${getTransactionColor(tx.type)}`}>
                         {tx.type.toUpperCase()}
