@@ -50,7 +50,7 @@ interface UseAnalyticsOptions {
 }
 
 export function useAnalytics(options: UseAnalyticsOptions) {
-  const { username, enabled = true, batchSize = 10, flushInterval = 5000 } = options;
+  const { username, enabled = true, batchSize = 60, flushInterval = 15000 } = options;
   
   const sessionIdRef = useRef<string>('');
   const eventQueueRef = useRef<AnalyticsEvent[]>([]);
@@ -69,6 +69,17 @@ export function useAnalytics(options: UseAnalyticsOptions) {
       sessionStorage.setItem('analyticsSessionId', sessionId);
     }
     sessionIdRef.current = sessionId;
+    
+    // Restore any pending events from localStorage
+    const pendingEvents = localStorage.getItem('analyticsEventQueue');
+    if (pendingEvents) {
+      try {
+        eventQueueRef.current = JSON.parse(pendingEvents);
+        localStorage.removeItem('analyticsEventQueue');
+      } catch (e) {
+        // Invalid data, ignore
+      }
+    }
     
     // Start session
     const device = getDeviceInfo();
@@ -126,7 +137,7 @@ export function useAnalytics(options: UseAnalyticsOptions) {
           }),
         }).catch(() => {});
       }
-    }, 30000);
+    }, 60000);
     
     // Flush interval
     const flushTimer = setInterval(() => {
@@ -157,6 +168,9 @@ export function useAnalytics(options: UseAnalyticsOptions) {
     eventQueueRef.current = [];
     lastFlushRef.current = Date.now();
     
+    // Clear localStorage backup after successful flush
+    localStorage.removeItem('analyticsEventQueue');
+    
     if (sync) {
       // Use sendBeacon for sync flush (before unload)
       navigator.sendBeacon('/api/analytics/events', JSON.stringify({ events }));
@@ -181,6 +195,9 @@ export function useAnalytics(options: UseAnalyticsOptions) {
     // Auto flush if batch size reached
     if (eventQueueRef.current.length >= batchSize) {
       flushEvents();
+    } else {
+      // Backup to localStorage in case of page crash/reload
+      localStorage.setItem('analyticsEventQueue', JSON.stringify(eventQueueRef.current));
     }
   }, [enabled, currentPage, batchSize, flushEvents]);
   

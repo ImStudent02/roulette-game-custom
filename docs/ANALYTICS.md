@@ -144,14 +144,23 @@ track.currencySwitched("trial", "real");
 
 ### Batching
 
-- Events are batched locally (default: 10 events)
-- Auto-flush every 5 seconds
-- Sync flush on page unload via `sendBeacon`
+Events are queued locally and sent in bulk to reduce API calls:
+
+| Setting             | Value      | Description                        |
+| ------------------- | ---------- | ---------------------------------- |
+| Batch Size          | 60 events  | Flush when queue reaches 60        |
+| Flush Interval      | 15 seconds | Send pending events every 15s      |
+| Heartbeat           | 60 seconds | Session keep-alive ping            |
+| localStorage Backup | ✅         | Pending events survive page reload |
+
+- Events stored in `eventQueueRef` (memory) + `analyticsEventQueue` (localStorage)
+- On page unload: Sync flush via `navigator.sendBeacon`
+- On page reload: Pending events restored from localStorage
 
 ### Session Management
 
 - Session ID stored in `sessionStorage`
-- Heartbeat sent every 30 seconds
+- Heartbeat sent every 60 seconds
 - Session ends on logout or browser close
 
 ---

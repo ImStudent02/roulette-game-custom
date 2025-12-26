@@ -12,6 +12,8 @@ This directory contains **utility libraries**, type definitions, and core config
 | `gameUtils.ts`    | Game utility functions and bet calculations          |
 | `hyperParams.ts`  | ⚙️ Game configuration (weights, multipliers, timing) |
 | `auth.ts`         | Authentication utilities (encryption, JWT, password) |
+| `analytics.ts`    | 📊 User analytics database operations                |
+| `houseFund.ts`    | 💰 House fund persistence (Next.js side)             |
 | `db.ts`           | MongoDB connection and operations                    |
 | `dbManager.ts`    | Database abstraction layer (MongoDB/FileSystem)      |
 | `fileSystemDb.ts` | File-based database for local development            |
@@ -87,5 +89,41 @@ Authentication utilities:
 ## Related
 
 - `README-HYPERPARAMS.md` - Detailed hyperparameters documentation
-- `server.js` - WebSocket server using these utilities
+- `docs/ANALYTICS.md` - Full analytics system documentation
+- `server-v2.js` - WebSocket server using these utilities
 - `lib/types/` - Extended type definitions
+
+---
+
+## analytics.ts 📊
+
+User behavior tracking database operations:
+
+| Function                 | Description                             |
+| ------------------------ | --------------------------------------- |
+| `connectAnalyticsDb()`   | Connect to R_ANALYTICS_DB               |
+| `logEvent()`             | Log single event                        |
+| `logEvents()`            | Batch log multiple events               |
+| `startSession()`         | Create new session (handles duplicates) |
+| `endSession()`           | Mark session as ended                   |
+| `updateSessionSummary()` | Increment session counters              |
+| `getUserEvents()`        | Get user's event history                |
+| `getUserSessions()`      | Get user's session history              |
+| `getUserStats()`         | Get user's lifetime stats               |
+
+📖 See `docs/ANALYTICS.md` for full event types and usage.
+
+---
+
+## houseFund.ts 💰
+
+House fund persistence for Next.js API routes:
+
+| Function              | Description                     |
+| --------------------- | ------------------------------- |
+| `getHouseFund()`      | Get current balance from DB     |
+| `updateHouseFund()`   | Update balance                  |
+| `recordTransaction()` | Log deposit/withdrawal/win/loss |
+| `getTransactions()`   | Get transaction history         |
+
+**Note**: Server-side uses `server/houseFundDb.cjs` instead.

@@ -10,6 +10,7 @@ This directory contains **custom React hooks** that encapsulate reusable statefu
 | -------------- | ----------------- | --------------------------------------- |
 | `useWebSocket` | `useWebSocket.ts` | WebSocket connection for live game sync |
 | `useAuth`      | `useAuth.tsx`     | Authentication state management         |
+| `useAnalytics` | `useAnalytics.ts` | User behavior tracking & batching       |
 
 ---
 
@@ -84,8 +85,63 @@ const {
 
 ---
 
+## useAnalytics
+
+User behavior tracking with intelligent batching to minimize API calls.
+
+### Usage
+
+```tsx
+const { track } = useAnalytics({
+  username: user.username,
+  enabled: isAuthenticated,
+  batchSize: 60, // Optional: events before flush
+  flushInterval: 15000, // Optional: ms between flushes
+});
+
+// Track events
+track.betPlaced({ amount, type, roundNumber });
+track.betRemoved({ amount, msBeforeLock });
+track.currencySwitched("trial", "real");
+track.pageView("/live", "/topup");
+```
+
+### Configuration
+
+| Option          | Default  | Description                     |
+| --------------- | -------- | ------------------------------- |
+| `username`      | required | User identifier                 |
+| `enabled`       | `true`   | Enable/disable tracking         |
+| `batchSize`     | 60       | Events queued before auto-flush |
+| `flushInterval` | 15000    | Milliseconds between flushes    |
+
+### Features
+
+- **Local Batching**: Events queued in memory, sent in bulk
+- **localStorage Backup**: Pending events persist across page reload
+- **Heartbeat**: Session keep-alive every 60 seconds
+- **sendBeacon**: Guaranteed delivery on page unload
+- **Auto-Flush**: On batch size reached OR interval elapsed
+
+### Track Methods
+
+```typescript
+track.betPlaced({ amount, type, roundNumber, msIntoRound });
+track.betRemoved({ amount, msBeforeLock, wasLastSecond });
+track.chipSelected(chipValue, previousChip);
+track.roundResult({ won, amount, viewDurationMs });
+track.currencySwitched(from, to);
+track.chatMessageSent({ charCount, hasEmoji });
+track.topupOpened(fromPage, balance);
+track.paymentCompleted(packId, timeTakenMs);
+```
+
+---
+
 ## Related
 
-- `server.js` - WebSocket server implementation
+- `server-v2.js` - WebSocket server implementation
 - `lib/auth.ts` - Server-side auth utilities
+- `lib/analytics.ts` - Analytics database operations
+- `docs/ANALYTICS.md` - Full analytics documentation
 - `components/ui/AuthModal.tsx` - Auth UI component

@@ -10,6 +10,7 @@ server/
 ├── gameState.cjs       # Round timing & phase detection
 ├── betProcessor.cjs    # Bet validation & limit enforcement
 ├── houseProtection.cjs # Smart outcome selection
+├── houseFundDb.cjs     # 💰 MongoDB house fund persistence
 ├── logger.cjs          # File-based logging
 ├── index.cjs           # Central exports
 └── README.md           # This file
@@ -107,6 +108,34 @@ logger.info("Server started");
 logger.warn("High bet detected");
 logger.error("Connection failed", error.stack);
 logger.debug("Verbose info"); // Only in dev mode
+```
+
+### houseFundDb.cjs 💰
+
+Persistent MongoDB storage for house fund:
+
+| Function              | Description                     |
+| --------------------- | ------------------------------- |
+| `loadHouseFund()`     | Load fund from DB on startup    |
+| `saveHouseFund()`     | Persist current balance to DB   |
+| `recordTransaction()` | Log win/loss/deposit/withdrawal |
+| `getHouseFund()`      | Get current balance (in-memory) |
+| `updateHouseFund()`   | Add/subtract from balance       |
+
+```javascript
+const {
+  loadHouseFund,
+  saveHouseFund,
+  getHouseFund,
+  updateHouseFund,
+} = require("./houseFundDb.cjs");
+
+// On server startup
+await loadHouseFund();
+
+// After each round
+updateHouseFund(profitAmount);
+await saveHouseFund();
 ```
 
 ## Usage in server-v2.js

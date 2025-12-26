@@ -132,6 +132,18 @@ Multipliers are **mathematically designed** to ensure the house always has an ed
 
 Enter the code "@mrmoney" in the cheat code input box to receive 5,000 chips.
 
+### Demo User (No DB Required)
+
+For quick testing without database setup:
+
+- **Email**: `test@demo.com`
+- **Password**: `123123`
+
+This user bypasses database authentication and comes with:
+
+- 5000 Fermented Mangos (Trial)
+- 1000 Mangos (Real)
+
 ---
 
 ## 🛡️ House Protection System
@@ -218,6 +230,28 @@ Server logs are written to `logs/server.log`:
 - JSON format with timestamp, level, message, stack
 - Auto-rotation at 5MB (keeps 5 files)
 - Viewable in Admin Panel → Logs tab
+
+---
+
+## 📊 User Analytics
+
+Track user behavior for research and analysis. See [docs/ANALYTICS.md](docs/ANALYTICS.md) for full documentation.
+
+### Features
+
+- **Event Batching**: 60 events queued locally before sending
+- **localStorage Backup**: Events persist across page reload
+- **Session Tracking**: Heartbeat every 60 seconds
+- **Admin Dashboard**: View user behavior at `/admin/analytics`
+
+### Key Metrics Tracked
+
+| Category   | Events                                  |
+| ---------- | --------------------------------------- |
+| Betting    | bet_placed, bet_removed, round_result   |
+| Navigation | page_view, tab_switch, section_focus    |
+| Top-up     | pack_viewed, payment_completed          |
+| Behavior   | rage_click, hesitation, currency_switch |
 
 ---
 
