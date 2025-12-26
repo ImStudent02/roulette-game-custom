@@ -14,11 +14,21 @@ export async function POST(request: Request) {
       // Generate simple token (in production, use JWT)
       const token = Buffer.from(`${username}:${Date.now()}`).toString('base64');
       
-      return NextResponse.json({ 
+      const response = NextResponse.json({ 
         success: true, 
         token,
         message: 'Login successful'
       });
+      
+      // Set admin session cookie (expires when browser closes)
+      response.cookies.set('adminSession', 'authenticated', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+      });
+      
+      return response;
     }
 
     return NextResponse.json(
@@ -32,3 +42,4 @@ export async function POST(request: Request) {
     );
   }
 }
+

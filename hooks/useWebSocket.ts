@@ -23,6 +23,10 @@ export interface GameState {
   outerColors: string[];
   goldPosition: number;
   goldMultiplier: number;
+  
+  // Bet limits (dynamic based on house fund)
+  maxBetReal?: number;
+  maxBetTrial?: number;
 }
 
 export interface ChatMessage {

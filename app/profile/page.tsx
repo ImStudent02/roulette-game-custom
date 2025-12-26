@@ -157,14 +157,25 @@ export default function ProfilePage() {
 
         {/* User Info Card */}
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 mb-6 border border-gray-700">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-2xl">
-              {user.displayName.charAt(0).toUpperCase()}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-2xl">
+                {user.displayName.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white">{user.displayName}</h2>
+                <p className="text-gray-400">{user.username}</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-2xl font-bold text-white">{user.displayName}</h2>
-              <p className="text-gray-400">{user.username}</p>
-            </div>
+            <button
+              onClick={() => {
+                document.cookie = 'r_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                window.location.href = '/';
+              }}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-lg transition"
+            >
+              🚪 Logout
+            </button>
           </div>
           <div className="grid grid-cols-2 gap-4 text-sm text-gray-400">
             <div>Member since: {formatDate(user.signupTime)}</div>

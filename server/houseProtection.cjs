@@ -6,9 +6,10 @@
 const { WHEEL_NUMBERS, MULTIPLIERS, HOUSE_CONFIG } = require('./config.cjs');
 const { generateOuterColorsForRound, seededRandom, getEpoch } = require('./gameState.cjs');
 const betProcessor = require('./betProcessor.cjs');
+const houseFundDb = require('./houseFundDb.cjs');
 
-// House fund tracking (in mangos)
-let houseFund = HOUSE_CONFIG.INITIAL_FUND_USD * HOUSE_CONFIG.MANGO_TO_USD;
+// House fund tracking (in mangos) - cached locally, synced with DB
+let houseFund = 0; // Start at 0, load from DB on startup
 
 function getHouseFund() {
   return houseFund;
@@ -18,9 +19,20 @@ function setHouseFund(amount) {
   houseFund = amount;
 }
 
-function updateHouseFund(delta) {
-  houseFund += delta;
-  return houseFund;
+// Load from database on startup
+async function loadFromDatabase() {
+  const balance = await houseFundDb.loadHouseFundOnStartup();
+  houseFund = balance;
+  return balance;
+}
+
+// Update both cache and database
+async function updateHouseFundWithDb(delta, type, metadata = {}) {
+  const result = await houseFundDb.updateHouseFund(delta, type, metadata);
+  if (result.success) {
+    houseFund = result.newBalance;
+  }
+  return result;
 }
 
 /**
@@ -171,7 +183,7 @@ function selectProtectedOutcome(roundNumber, roundBets) {
 /**
  * Process round and update house fund
  */
-function processRoundOutcome(roundNumber, winningIndex, roundBets) {
+async function processRoundOutcome(roundNumber, winningIndex, roundBets) {
   const { colors: outerColors, goldPosition, goldMultiplier } = generateOuterColorsForRound(roundNumber);
   const winningPosition = WHEEL_NUMBERS[winningIndex];
   
@@ -191,9 +203,9 @@ function processRoundOutcome(roundNumber, winningIndex, roundBets) {
     }
   }
   
-  // Update house fund
-  updateHouseFund(totalHouseProfit);
-  console.log(`[HouseProtection] Round ${roundNumber} profit: ${totalHouseProfit}, Fund: ${houseFund}`);
+  // Update house fund in database
+  const type = totalHouseProfit >= 0 ? 'user_loss' : 'user_win';
+  await updateHouseFundWithDb(totalHouseProfit, type, { roundNumber });
   
   // Calculate next round's bet limit
   betProcessor.calculateNextRoundMaxBet(houseFund);
@@ -204,7 +216,8 @@ function processRoundOutcome(roundNumber, winningIndex, roundBets) {
 module.exports = {
   getHouseFund,
   setHouseFund,
-  updateHouseFund,
+  loadFromDatabase,
+  updateHouseFundWithDb,
   analyzePositions,
   selectProtectedOutcome,
   processRoundOutcome,

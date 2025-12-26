@@ -3,6 +3,196 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
+// House Fund Card Component
+interface HouseFundCardProps {
+  cardBg: string;
+  border: string;
+  textMuted: string;
+  inputBg: string;
+  text: string;
+  onUpdate: () => void;
+}
+
+interface HouseTransaction {
+  type: string;
+  amount: number;
+  amountUSD: number;
+  balanceAfter: number;
+  username?: string;
+  adminNote?: string;
+  timestamp: number;
+}
+
+function HouseFundCard({ cardBg, border, textMuted, inputBg, text, onUpdate }: HouseFundCardProps) {
+  const [fund, setFund] = useState<{ balanceMangos: number; balanceUSD: number } | null>(null);
+  const [transactions, setTransactions] = useState<HouseTransaction[]>([]);
+  const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    fetchFund();
+  }, []);
+
+  const fetchFund = async () => {
+    try {
+      const res = await fetch('/api/admin/house-fund');
+      if (res.ok) {
+        const data = await res.json();
+        setFund(data.fund);
+        setTransactions(data.transactions || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch fund:', err);
+    }
+  };
+
+  const handleDeposit = async () => {
+    const amt = parseInt(amount);
+    if (!amt || amt <= 0) return;
+    
+    setLoading(true);
+    setMessage('');
+    
+    try {
+      const res = await fetch('/api/admin/house-fund', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: amt, note }),
+      });
+      const data = await res.json();
+      
+      if (res.ok) {
+        setMessage(`✓ Deposited ${amt.toLocaleString()} mangos`);
+        setAmount('');
+        setNote('');
+        fetchFund();
+        onUpdate();
+      } else {
+        setMessage(`✗ ${data.error}`);
+      }
+    } catch {
+      setMessage('✗ Failed to deposit');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    const amt = parseInt(amount);
+    if (!amt || amt <= 0) return;
+    
+    setLoading(true);
+    setMessage('');
+    
+    try {
+      const res = await fetch('/api/admin/house-fund', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: amt, note }),
+      });
+      const data = await res.json();
+      
+      if (res.ok) {
+        setMessage(`✓ Withdrew ${amt.toLocaleString()} mangos`);
+        setAmount('');
+        setNote('');
+        fetchFund();
+        onUpdate();
+      } else {
+        setMessage(`✗ ${data.error}`);
+      }
+    } catch {
+      setMessage('✗ Failed to withdraw');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatTime = (ts: number) => new Date(ts).toLocaleString();
+  const formatType = (type: string) => type.replace(/_/g, ' ').toUpperCase();
+
+  return (
+    <div className={`${cardBg} rounded-lg p-4 border ${border}`}>
+      <h3 className="font-medium mb-4">House Fund</h3>
+      
+      {/* Current Balance */}
+      <div className="bg-green-900/30 rounded-lg p-4 border border-green-500/30 mb-4">
+        <div className={`text-sm ${textMuted}`}>Current Balance</div>
+        <div className="text-3xl font-bold text-green-400">
+          ${fund ? fund.balanceUSD.toLocaleString() : '0'}
+        </div>
+      </div>
+
+      {/* Deposit/Withdraw Form */}
+      <div className="mb-4 p-4 bg-gray-900/50 rounded-lg">
+        <div className="flex gap-2 mb-2">
+          <div className="flex-1 relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+            <input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="Amount (USD)"
+              className={`w-full pl-7 ${inputBg} border ${border} rounded px-3 py-2 ${text}`}
+            />
+          </div>
+          <input
+            type="text"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Note (optional)"
+            className={`flex-1 ${inputBg} border ${border} rounded px-3 py-2 ${text}`}
+          />
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={handleDeposit}
+            disabled={loading}
+            className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded transition"
+          >
+            {loading ? '...' : 'Deposit USD'}
+          </button>
+          <button
+            onClick={handleWithdraw}
+            disabled={loading}
+            className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded transition"
+          >
+            {loading ? '...' : 'Withdraw USD'}
+          </button>
+        </div>
+        {message && (
+          <div className={`mt-2 text-sm ${message.startsWith('✓') ? 'text-green-400' : 'text-red-400'}`}>
+            {message}
+          </div>
+        )}
+      </div>
+
+      {/* Recent Transactions */}
+      <div>
+        <div className={`text-sm font-medium ${textMuted} mb-2`}>Recent Transactions</div>
+        <div className="max-h-40 overflow-y-auto space-y-1">
+          {transactions.slice(0, 10).map((tx, i) => (
+            <div key={i} className="flex items-center justify-between text-xs py-1 border-b border-gray-700/50">
+              <span className={tx.amountUSD >= 0 ? 'text-green-400' : 'text-red-400'}>
+                {formatType(tx.type)}
+              </span>
+              <span className={tx.amountUSD >= 0 ? 'text-green-400' : 'text-red-400'}>
+                {tx.amountUSD >= 0 ? '+' : ''}${Math.abs(tx.amountUSD).toLocaleString()}
+              </span>
+              <span className="text-gray-500">{formatTime(tx.timestamp)}</span>
+            </div>
+          ))}
+          {transactions.length === 0 && (
+            <div className="text-center text-gray-500 py-2">No transactions yet</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Types
 interface User {
   id: string;
@@ -272,7 +462,7 @@ export default function AdminDashboard() {
               {[
                 { label: 'Total Users', value: stats.totalUsers, color: 'text-blue-400' },
                 { label: 'Online Now', value: stats.onlineUsers, color: 'text-green-400' },
-                { label: 'House Fund', value: `$${(stats.houseFund / 1000).toLocaleString()}`, color: 'text-yellow-400' },
+                { label: 'House Fund', value: `$${stats.houseFund.toLocaleString()}`, color: 'text-yellow-400' },
                 { label: "Today's P/L", value: stats.todayProfit >= 0 ? `+$${stats.todayProfit}` : `-$${Math.abs(stats.todayProfit)}`, color: stats.todayProfit >= 0 ? 'text-green-400' : 'text-red-400' },
                 { label: 'Total Bets', value: stats.totalBets.toLocaleString(), color: 'text-purple-400' },
               ].map((stat, i) => (
@@ -287,6 +477,12 @@ export default function AdminDashboard() {
             <div className={`${cardBg} rounded-lg p-4 border ${border}`}>
               <h3 className="font-medium mb-3">Quick Actions</h3>
               <div className="flex flex-wrap gap-2">
+                <a 
+                  href="/admin/analytics" 
+                  className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-md transition"
+                >
+                  📊 User Analytics
+                </a>
                 <button className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition">
                   Export Users
                 </button>
@@ -298,6 +494,16 @@ export default function AdminDashboard() {
                 </button>
               </div>
             </div>
+
+            {/* House Fund Management */}
+            <HouseFundCard 
+              cardBg={cardBg} 
+              border={border} 
+              textMuted={textMuted}
+              inputBg={inputBg}
+              text={text}
+              onUpdate={fetchData}
+            />
           </div>
         )}
 

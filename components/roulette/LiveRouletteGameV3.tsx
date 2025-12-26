@@ -14,7 +14,9 @@ import CurrencyHeader from '../ui/CurrencyHeader';
 import WalletPanel from '../ui/WalletPanel';
 import AuthModalV2 from '../ui/AuthModalV2';
 import DailyClaimPopup from '../ui/DailyClaimPopup';
+import Footer from '../ui/Footer';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useAnalytics } from '@/hooks/useAnalytics';
 
 type GamePhase = 'betting' | 'warning' | 'locked' | 'spinning' | 'result';
 
@@ -97,6 +99,12 @@ export default function LiveRouletteGameV3() {
     sendChatMessage,
     editChatMessage,
   } = useWebSocket(WS_URL);
+  
+  // Analytics tracking
+  const { track } = useAnalytics({ 
+    username: user?.username || '', 
+    enabled: isAuthenticated 
+  });
   
   // Server time offset
   const [serverOffset, setServerOffset] = useState(0);
@@ -322,7 +330,7 @@ export default function LiveRouletteGameV3() {
   
   // Handle spin complete
   const handleSpinComplete = useCallback((position: WheelPosition) => {
-    console.log('Spin complete:', position);
+    // Spin complete logic if needed
   }, []);
   
   // Clear winnings on new round
@@ -356,7 +364,17 @@ export default function LiveRouletteGameV3() {
     
     setCurrentBets(prev => [...prev, bet]);
     wsSendBet({ type: bet.type, amount: bet.amount, targetNumber: bet.targetNumber, currencyMode: bet.currencyMode });
-  }, [canBet, currencyBalance.fermentedMangos, currencyBalance.mangos, wsSendBet]);
+    
+    // Analytics tracking
+    const msIntoRound = displayTime > 0 ? (TIMER_CONFIG.bettingDuration - displayTime) * 1000 : 0;
+    track.betPlaced({
+      amount: bet.amount,
+      type: bet.type,
+      targetNumber: bet.targetNumber,
+      roundNumber,
+      msIntoRound,
+    });
+  }, [canBet, currencyBalance.fermentedMangos, currencyBalance.mangos, wsSendBet, track, displayTime, roundNumber]);
   
   // Remove bet - refunds to the bet's specific currency
   const removeBet = useCallback((id: string) => {
@@ -372,10 +390,20 @@ export default function LiveRouletteGameV3() {
             return { ...curr, mangos: curr.mangos + bet.amount };
           }
         });
+        
+        // Analytics tracking
+        const msBeforeLock = displayTime * 1000;
+        const wasLastSecond = displayTime <= 5;
+        track.betRemoved({
+          amount: bet.amount,
+          msBeforeLock,
+          wasLastSecond,
+          roundNumber,
+        });
       }
       return prev.filter(b => b.id !== id);
     });
-  }, [canBet]);
+  }, [canBet, track, displayTime, roundNumber]);
   
   // Handle auth success
   const handleAuthSuccess = useCallback((userData: { username: string; displayName: string; token: string }) => {
@@ -412,8 +440,9 @@ export default function LiveRouletteGameV3() {
   
   // Handle currency mode change
   const handleModeChange = useCallback((mode: 'trial' | 'real') => {
+    track.currencySwitched(currencyMode, mode);
     setCurrencyMode(mode);
-  }, []);
+  }, [track, currencyMode]);
   
   // Calculate totals per currency mode
   const { trialBetTotal, realBetTotal, totalBetAmount } = useMemo(() => {
@@ -584,7 +613,7 @@ export default function LiveRouletteGameV3() {
                   : 'glass-card text-gray-400 hover:text-white'
               }`}
             >
-              🎲 Betting
+              ☠️ Betting ☠️
             </button>
             <button
               onClick={() => setActiveTab('wallet')}
@@ -625,7 +654,7 @@ export default function LiveRouletteGameV3() {
                   balance={activeBetBalance}
                   isSpinning={!canBet}
                   currencyMode={currencyMode}
-                  maxBet={currencyMode === 'real' ? 100000 : 1000000}
+                  maxBet={currencyMode === 'real' ? (gameState?.maxBetReal ?? 100000) : (gameState?.maxBetTrial ?? 1000000)}
                 />
               </div>
               
@@ -676,6 +705,8 @@ export default function LiveRouletteGameV3() {
           )}
         </section>
       </main>
+      
+      <Footer />
       
       {/* Quick Links */}
       <div className="fixed bottom-2 left-2 sm:bottom-4 sm:left-4 flex gap-2">

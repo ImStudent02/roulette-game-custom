@@ -134,7 +134,7 @@ async function processRoundBets(roundNumber) {
   betProcessor.setRoundResults(roundNumber, results);
   
   // Update house fund
-  houseProtection.processRoundOutcome(roundNumber, winningIndex, roundBets);
+  await houseProtection.processRoundOutcome(roundNumber, winningIndex, roundBets);
   
   const processTime = Date.now() - startTime;
   logger.info(`[Round ${roundNumber}] Processed in ${processTime}ms (protected: ${wasProtected})`);
@@ -408,7 +408,7 @@ function handleMessage(ws, message) {
 // Start Server
 // ============================================
 
-app.prepare().then(() => {
+app.prepare().then(async () => {
   const server = createServer((req, res) => {
     const parsedUrl = parse(req.url, true);
     handle(req, res, parsedUrl);
@@ -446,6 +446,10 @@ app.prepare().then(() => {
     });
   });
 
+  // Load house fund from database before starting game loop
+  const houseFundBalance = await houseProtection.loadFromDatabase();
+  logger.info(`> House fund loaded: ${houseFundBalance.toLocaleString()} mangos ($${(houseFundBalance / 1000).toLocaleString()})`);
+  
   startGameLoop();
 
   const epoch = gameState.getEpoch();

@@ -191,19 +191,9 @@ export default function CurrencyHeader({
               </button>
             </div>
 
-            {/* Logout */}
+            {/* User Display Name */}
             {displayName && (
-              <div className="hidden sm:flex items-center gap-2">
-                <span className="text-xs text-gray-500">{displayName}</span>
-                {onLogout && (
-                  <button
-                    onClick={onLogout}
-                    className="text-[10px] text-gray-500 hover:text-red-400 transition-colors"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
+              <span className="hidden sm:block text-xs text-gray-400">{displayName}</span>
             )}
           </div>
         </div>

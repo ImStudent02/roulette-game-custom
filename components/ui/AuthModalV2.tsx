@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 interface AuthModalV2Props {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export default function AuthModalV2({ isOpen, onClose, onAuthSuccess }: AuthModa
   const [dob, setDob] = useState('');
   const [otp, setOtp] = useState('');
   const [debugOtp, setDebugOtp] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   // Reset on open
   useEffect(() => {
@@ -36,6 +38,7 @@ export default function AuthModalV2({ isOpen, onClose, onAuthSuccess }: AuthModa
       setDob('');
       setOtp('');
       setDebugOtp('');
+      setTermsAccepted(false);
     }
   }, [isOpen]);
 
@@ -391,11 +394,33 @@ export default function AuthModalV2({ isOpen, onClose, onAuthSuccess }: AuthModa
                 />
               </div>
               
+              {/* Terms Acceptance Checkbox */}
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="terms-accept"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="w-5 h-5 mt-0.5 rounded border-gray-600 bg-gray-800 text-[#d4af37] focus:ring-[#d4af37] focus:ring-offset-gray-900 cursor-pointer"
+                />
+                <label htmlFor="terms-accept" className="text-sm text-gray-400 cursor-pointer">
+                  I am 18+ years old and I agree to the{' '}
+                  <Link href="/terms" target="_blank" className="text-[#d4af37] hover:underline">
+                    Terms of Use
+                  </Link>
+                  {' '}and{' '}
+                  <Link href="/privacy" target="_blank" className="text-[#d4af37] hover:underline">
+                    Privacy Policy
+                  </Link>
+                  , including data collection for research purposes.
+                </label>
+              </div>
+              
               {error && <div className="text-red-400 text-sm">{error}</div>}
               
               <button
                 onClick={handleRegister}
-                disabled={loading || !username || !password || !dob}
+                disabled={loading || !username || !password || !dob || !termsAccepted}
                 className="w-full py-4 bg-gradient-to-r from-[#d4af37] to-[#b8860b] text-black font-bold text-lg rounded-xl hover:shadow-[0_0_30px_rgba(212,175,55,0.4)] transition-all disabled:opacity-50"
               >
                 {loading ? 'Creating Account...' : '🎉 Create Account & Get 100 🍋'}

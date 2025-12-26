@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase, getCollections } from '@/lib/db';
+import { getHouseFund } from '@/lib/houseFund';
 
 export async function GET() {
   try {
@@ -34,15 +35,14 @@ export async function GET() {
     // Get rounds count for recent activity
     const roundsCount = await rounds.countDocuments();
 
-    // Calculate house fund (sum of all user mangos/mangoJuice represents liability)
-    // For now, use a base + today's profit
-    const baseFund = 50000000; // 50M mangos = $50K
-    const houseFund = baseFund + (todayProfit * 10); // Rough estimate
+    // Get house fund from database (in USD)
+    const houseFundDoc = await getHouseFund();
+    const houseFundUSD = houseFundDoc?.balanceUSD ?? 0;
 
     return NextResponse.json({
       totalUsers,
       onlineUsers: 0, // WebSocket server tracks this
-      houseFund,
+      houseFund: houseFundUSD,
       todayProfit: Math.floor(todayProfit / 1000), // Convert to USD approx
       totalBets,
       roundsCount,
@@ -52,9 +52,10 @@ export async function GET() {
     return NextResponse.json({
       totalUsers: 0,
       onlineUsers: 0,
-      houseFund: 50000000,
+      houseFund: 0,
       todayProfit: 0,
       totalBets: 0,
     });
   }
 }
+

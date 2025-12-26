@@ -34,21 +34,26 @@ function getNextRoundMaxBet() {
 }
 
 function calculateNextRoundMaxBet(houseFundMangos) {
-  // Formula: (HouseFund × RiskPercent) / (OnlineUsers × MaxWinMultiplier)
+  const MIN_SENSIBLE_BET = 10;
   const maxExposure = houseFundMangos * (HOUSE_CONFIG.MAX_EXPOSURE_PERCENT / 100);
-  const activeUsers = Math.max(onlineUserCount, 10); // Minimum 10 users estimate
-  const maxWinMultiplier = 200; // Gold max multiplier
+  const activeUsers = Math.max(onlineUserCount, 10);
+  const maxWinMultiplier = 200;
   
   let realLimit = Math.floor(maxExposure / (activeUsers * maxWinMultiplier));
-  realLimit = Math.max(HOUSE_CONFIG.MIN_MAX_BET, realLimit);
-  realLimit = Math.min(HOUSE_CONFIG.DEFAULT_MAX_BET_REAL, realLimit);
+  
+  if (realLimit < MIN_SENSIBLE_BET) {
+    realLimit = 0;
+  } else {
+    realLimit = Math.max(HOUSE_CONFIG.MIN_MAX_BET, realLimit);
+    realLimit = Math.min(HOUSE_CONFIG.DEFAULT_MAX_BET_REAL, realLimit);
+  }
   
   nextRoundMaxBet = {
     real: realLimit,
-    trial: HOUSE_CONFIG.DEFAULT_MAX_BET_TRIAL, // Trial stays fixed
+    trial: HOUSE_CONFIG.DEFAULT_MAX_BET_TRIAL,
+    bettingDisabled: realLimit === 0,
   };
   
-  console.log(`[BetLimits] Next round max: ${realLimit} real, ${nextRoundMaxBet.trial} trial (${activeUsers} users)`);
   return nextRoundMaxBet;
 }
 
@@ -90,17 +95,7 @@ function placeBet(username, bet, currencyType = 'trial') {
     return { success: false, error: 'Invalid bet' };
   }
   
-  // Check bet limit
-  const maxBet = currencyType === 'real' ? nextRoundMaxBet.real : nextRoundMaxBet.trial;
-  if (amount > maxBet) {
-    return { 
-      success: false, 
-      error: `Max bet is ${maxBet.toLocaleString()} for this round`,
-      maxBet 
-    };
-  }
-  
-  // Get/create round data
+  // Get/create round data first (needed for total bet check)
   if (!roundBets.has(roundNumber)) {
     roundBets.set(roundNumber, new Map());
   }
@@ -111,6 +106,23 @@ function placeBet(username, bet, currencyType = 'trial') {
   }
   
   const userData = roundData.get(username);
+  
+  // Check bet limit - TOTAL bets per round, not per individual bet
+  const maxBet = currencyType === 'real' ? nextRoundMaxBet.real : nextRoundMaxBet.trial;
+  const totalAfterThisBet = userData.totalBetAmount + amount;
+  
+  if (totalAfterThisBet > maxBet) {
+    const remaining = Math.max(0, maxBet - userData.totalBetAmount);
+    return { 
+      success: false, 
+      error: remaining > 0 
+        ? `Max bet this round is ${maxBet.toLocaleString()}. You can bet ${remaining.toLocaleString()} more.`
+        : `You've reached the max bet of ${maxBet.toLocaleString()} for this round.`,
+      maxBet,
+      currentTotal: userData.totalBetAmount,
+      remaining,
+    };
+  }
   
   // Check balance
   const balance = userBalances.get(username);
