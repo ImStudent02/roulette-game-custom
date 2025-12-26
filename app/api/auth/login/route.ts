@@ -30,6 +30,45 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check for Demo User
+    if (email === 'test@demo.com' && password === '123123') {
+      const demoUser = {
+        username: '@DemoUser',
+        displayName: 'Demo Player',
+        fermentedMangos: 5000,
+        expiredJuice: 0,
+        mangos: 1000,
+        mangoJuice: 0,
+        totalWins: 0,
+        totalLosses: 0,
+      };
+
+      // Generate session token
+      const sessionId = generateSessionId();
+      const token = generateSessionToken({
+        username: demoUser.username,
+        displayName: demoUser.displayName,
+        sessionId,
+      });
+
+      // Set session cookie
+      const cookieOptions = getSessionCookieOptions();
+      const cookieStore = await cookies();
+      cookieStore.set(cookieOptions.name, token, {
+        httpOnly: cookieOptions.httpOnly,
+        secure: cookieOptions.secure,
+        sameSite: cookieOptions.sameSite,
+        maxAge: cookieOptions.maxAge,
+        path: cookieOptions.path,
+      });
+
+      return NextResponse.json({
+        success: true,
+        token,
+        user: demoUser,
+      });
+    }
+
     // Find user by email or username
     let user;
     if (username) {
