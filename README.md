@@ -4,6 +4,8 @@ DEMO: https://68dfb2f814489b38a5c1a0cc--startling-mousse-9dfd56.netlify.app/ (Ea
 
 PREVIEW: https://roulette-game-custom-8se0jitw5-imstudent02s-projects.vercel.app/ (letest version preview)
 
+Deplyed on: https://roulette-game-custom.vercel.app/ (Check this out)
+
 (This DEMO or PREVIEW are under construction this is not final product)
 
 A web-based roulette game with unique rules, additional wheel mechanics, and virtual currency.
