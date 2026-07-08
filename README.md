@@ -1,8 +1,8 @@
 # Roulette Game Customized
 
-DEMO: https://68dfb2f814489b38a5c1a0cc--startling-mousse-9dfd56.netlify.app/
+DEMO: https://68dfb2f814489b38a5c1a0cc--startling-mousse-9dfd56.netlify.app/ (Early Alpha prototype)
 
-PREVIEW: https://roulette-game-custom-8se0jitw5-imstudent02s-projects.vercel.app/
+PREVIEW: https://roulette-game-custom-8se0jitw5-imstudent02s-projects.vercel.app/ (letest version preview)
 
 (This DEMO or PREVIEW are under construction this is not final product)
 
